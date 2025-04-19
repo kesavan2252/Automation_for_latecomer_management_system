@@ -137,7 +137,7 @@ const ScannerPage = () => {
                     hour: '2-digit',
                     minute: '2-digit',
                     second: '2-digit',
-                    hour12: false
+                    hour12: true
                 });
 
                 setScannedData({
@@ -191,44 +191,46 @@ const ScannerPage = () => {
 
     // Add this in your return JSX, inside the scanner status div
     return (
-        <div className="min-h-screen bg-gradient-to-b from-indigo-600 to-violet-900">
+        <div className="min-h-screen bg-gradient-to-br from-teal-600 via-cyan-700 to-amber-900 animate-gradient-x">
             {/* Notification styling */}
             {notification.message && (
-                <div className={`fixed top-5 right-5 px-4 py-2 rounded shadow-lg text-white 
-                    ${notification.type === "success" ? "bg-emerald-500" 
-                    : notification.type === "error" ? "bg-rose-500" 
-                    : notification.type === "info" ? "bg-cyan-500" 
-                    : "bg-amber-500"}`}>
+                <div className={`fixed top-5 right-5 px-4 py-2 rounded-lg shadow-xl text-white font-semibold
+                    transform transition-all duration-300 ${notification.message ? 'translate-x-0' : 'translate-x-[150%]'}
+                    ${notification.type === "success" ? "bg-gradient-to-r from-emerald-400 to-teal-500" 
+                    : notification.type === "error" ? "bg-gradient-to-r from-rose-400 to-pink-500" 
+                    : notification.type === "info" ? "bg-gradient-to-r from-cyan-400 to-sky-500" 
+                    : "bg-gradient-to-r from-amber-400 to-orange-500"}`}>
                     {notification.message}
                 </div>
             )}
 
             {/* Header section */}
-            <div className="bg-indigo-800/30 backdrop-blur-sm text-white px-8 py-4 shadow-lg">
+            <div className="bg-teal-800/40 backdrop-blur-lg border-b border-cyan-400/30 text-amber-100 px-8 py-4 shadow-2xl">
                 <div className="container mx-auto flex justify-between items-center">
                     <a href="https://solamalaice.ac.in/" 
                        target="_blank" 
                        rel="noopener noreferrer"
-                       className="text-2xl font-bold hover:text-indigo-200 transition-colors">
+                       className="text-2xl font-bold hover:text-amber-300 transition-colors duration-300 hover:drop-shadow-[0_2px_4px_rgba(251,191,36,0.3)]">
                         Solamalai College of Engineering
                     </a>
-                    {/* Update the time display in header */}
                     <div className="flex items-center gap-6">
-                        <div className="text-xl font-digital bg-indigo-700/50 px-4 py-2 rounded-lg border border-indigo-400/30">
-                            {currentTime.toLocaleString('en-IN', {
-                                timeZone: 'Asia/Kolkata',
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                                second: '2-digit',
-                                hour12: true
-                            })}
+                        <div className="text-xl font-digital bg-amber-900/20 px-4 py-2 rounded-xl border border-amber-400/30 animate-pulse">
+                            <span className="bg-gradient-to-r from-amber-400 to-teal-300 bg-clip-text text-transparent">
+                                {currentTime.toLocaleString('en-IN', {
+                                    timeZone: 'Asia/Kolkata',
+                                    day: '2-digit',
+                                    month: 'short',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    second: '2-digit',
+                                    hour12: true
+                                })}
+                            </span>
                         </div>
                         <button 
                             onClick={handleLogout}
-                            className="bg-rose-500 hover:bg-rose-600 text-white px-6 py-2 rounded-lg transition-colors">
+                            className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white px-6 py-2 rounded-xl transition-all duration-300 hover:shadow-lg hover:shadow-amber-500/30">
                             Logout
                         </button>
                     </div>
@@ -237,72 +239,91 @@ const ScannerPage = () => {
 
             <div className="container mx-auto px-4 py-8">
                 <div className="max-w-2xl mx-auto">
-                    <h2 className="text-3xl font-bold text-center text-white mb-8 drop-shadow-lg">
-                        {/* Greeting remains the same */}
-                    </h2>
-
-                    <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-2xl p-8">
+                    <div className="bg-gradient-to-br from-white/95 via-cyan-50/95 to-amber-50/95 backdrop-blur-xl rounded-2xl shadow-2xl p-8 border border-cyan-200/30 hover:border-cyan-300/50 transition-all duration-500">
                         {/* Scanner Status Section */}
                         <div className="text-center mb-6">
-                            <div className={`text-xl font-bold mb-2 ${
-                                hardwareStatus === "Hardware Active" ? "text-emerald-500" : "text-rose-500"
-                            }`}>
-                                {hardwareStatus}
-                            </div>
-                            <div className={`text-sm font-medium ${
-                                scannerStatus === "Scan successful" ? "text-emerald-500" :
-                                scannerStatus === "Scan failed" ? "text-rose-500" :
-                                scannerStatus === "Processing scan..." ? "text-cyan-500" :
-                                "text-slate-500"
-                            }`}>
-                                {scannerStatus}
+                            <div className="relative inline-block">
+                                <div className={`absolute inset-0 rounded-full animate-pulse ${hardwareStatus === "Hardware Active" ? "bg-emerald-400/30" : "bg-rose-400/30"}`}></div>
+                                <div className={`text-xl font-bold mb-2 relative z-10 p-3 rounded-2xl backdrop-blur-sm ${
+                                    hardwareStatus === "Hardware Active" 
+                                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-400/30" 
+                                        : "bg-rose-500/10 text-rose-400 border border-rose-400/30"
+                                }`}>
+                                    {hardwareStatus}
+                                    <div className="absolute -top-3 right-0 animate-float">
+                                        {hardwareStatus === "Hardware Active" ? (
+                                            <svg className="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        ) : (
+                                            <svg className="w-6 h-6 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/>
+                                            </svg>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
                         {/* Scanner Input Section */}
                         <div className="space-y-6">
                             <div>
-                                <h3 className="text-2xl font-bold text-indigo-800 mb-2">ID Scanner</h3>
-                                <p className="text-slate-600">Show your ID Card to the scanner or enter Roll Number manually.</p>
+                                <h3 className="text-3xl font-bold bg-gradient-to-r from-cyan-600 to-amber-600 bg-clip-text text-transparent mb-2">
+                                    ID Scanner Interface
+                                </h3>
+                                <p className="text-slate-600 font-medium">Present ID Card or Enter Roll Number Below</p>
                             </div>
 
                             {/* Manual Entry */}
-                            <div className="bg-slate-50 p-6 rounded-lg border border-slate-200">
-                                <p className="text-lg font-semibold text-slate-700 mb-3">Manual Entry</p>
+                            <div className="bg-white p-6 rounded-xl border border-slate-200/60 hover:border-cyan-300/60 transition-all duration-300 group">
+                                <p className="text-lg font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                                    <svg className="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                                    </svg>
+                                    Manual Entry
+                                </p>
                                 <input
                                     type="text"
                                     placeholder="Enter Roll Number"
                                     value={manualRollNo}
                                     onChange={(e) => setManualRollNo(e.target.value)}
                                     ref={inputRef}
-                                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-400 focus:border-transparent placeholder-slate-400 transition-all duration-300"
                                 />
                                 <button
                                     onClick={handleManualEntry}
-                                    className="w-full mt-3 bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg transition-colors">
-                                    Submit
+                                    className="w-full mt-4 bg-gradient-to-r from-amber-500 to-cyan-500 hover:from-amber-600 hover:to-cyan-600 text-white py-3 rounded-xl transition-all duration-300 hover:shadow-lg hover:shadow-amber-500/30 flex items-center justify-center gap-2">
+                                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                    </svg>
+                                    Submit Entry
                                 </button>
                             </div>
 
                             {/* Scanned Details */}
                             {scannedData && (
-                                <div className="bg-indigo-50 p-6 rounded-lg border border-indigo-100">
-                                    <h4 className="text-lg font-bold text-indigo-800 mb-4">Scanned Details</h4>
-                                    <div className="space-y-2">
-                                        <p><span className="font-semibold">Roll Number:</span> {scannedData.roll_no}</p>
-                                        <p><span className="font-semibold">Name:</span> {scannedData.name}</p>
-                                        <p><span className="font-semibold">Department:</span> {scannedData.department}</p>
-                                        <p><span className="font-semibold">Time:</span> {scannedData.date}</p>
-                                        <p>
-                                            <span className="font-semibold">Status:</span>
-                                            <span className={`ml-2 px-3 py-1 rounded-full text-sm ${
-                                                scannedData.status === "On-Time" 
-                                                    ? "bg-emerald-100 text-emerald-800" 
-                                                    : "bg-amber-100 text-amber-800"
-                                            }`}>
-                                                {scannedData.status}
-                                            </span>
-                                        </p>
+                                <div className="animate-scale-in bg-white p-6 rounded-xl border border-cyan-200/60">
+                                    <h4 className="text-lg font-bold text-cyan-700 mb-4 flex items-center gap-2">
+                                        <svg className="w-5 h-5 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                        Scan Details
+                                    </h4>
+                                    <div className="space-y-3">
+                                        {Object.entries(scannedData).map(([key, value]) => (
+                                            <div key={key} className="flex justify-between items-center border-b border-slate-100 pb-2">
+                                                <span className="font-medium text-slate-600 capitalize">{key.replace('_', ' ')}:</span>
+                                                <span className={`font-semibold ${
+                                                    key === 'status' 
+                                                        ? value === "On-Time" 
+                                                            ? "text-emerald-500" 
+                                                            : "text-amber-500"
+                                                        : "text-cyan-600"
+                                                }`}>
+                                                    {value}
+                                                </span>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                             )}

@@ -191,7 +191,6 @@ const StudentReportDetails = () => {
                 </div>
               )}
 
-              // Replace the existing no-records section with this enhanced version
               {attendance.length > 0 ? (
                 <div className="bg-white rounded-2xl shadow-lg overflow-hidden animate-fadeIn">
                   <table className="w-full">
