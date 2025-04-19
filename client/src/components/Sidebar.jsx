@@ -48,12 +48,12 @@ const Sidebar = () => {
       type: "link"
     },
     {
-      name: "Data Tools",
+      name: "Record Operations",  // Changed from "Data Tools"
       icon: <ImportDataIcon className="w-5 h-5" />,
       type: "dropdown",
       subItems: [
         { 
-          name: "Import Data", 
+          name: "Add Records",  // Changed from "Import Data"
           submenu: [
             { name: "Single Entry", path: "/data-tools/import/individual" },
             { name: "Bulk Import", path: "/data-tools/import/batch" }
@@ -61,7 +61,7 @@ const Sidebar = () => {
         },
         { name: "Edit Records", path: "/data-tools/edit" },
         { 
-          name: "Delete Records",
+          name: "Remove Records",  // Changed from "Delete Records"
           submenu: [
             { name: "Single Removal", path: "/data-tools/delete/individual" },
             { name: "Bulk Removal", path: "/data-tools/delete/batch" }
@@ -79,8 +79,7 @@ const Sidebar = () => {
         <div className="bg-white/10 backdrop-blur-sm p-4 rounded-2xl inline-block shadow-lg">
           <img src={icon} alt="College Logo" className="h-14 w-14 mx-auto" />
         </div>
-        <h2 className="text-xl font-bold text-white mt-3">ATTENDANCE PRO</h2>
-        <p className="text-xs text-blue-200 mt-1">Management System</p>
+        <h2 className="text-xl font-bold text-white mt-3">Management System</h2>
       </div>
   
       {/* Navigation Menu */}
@@ -165,18 +164,16 @@ const Sidebar = () => {
           </div>
           <div>
             <p className="text-white font-medium text-sm">Admin User</p>
-            <p className="text-xs text-blue-200">Super Admin</p>
           </div>
         </div>
         <button
           onClick={handleLogout}
           className="w-full flex items-center px-4 py-3 mt-3 text-white hover:bg-red-500/10 rounded-lg transition-all group"
         >
-          <span className="mr-3 flex items-center text-red-300 group-hover:text-red-400">
+          <span className="mr-3 flex items-center text-red-300 group-hover:text-red-600">
             <LogoutIcon className="w-5 h-5" />
           </span>
           <span className="font-medium text-sm">Logout</span>
-          <span className="ml-auto text-xs text-blue-200">Ctrl+L</span>
         </button>
       </div>
     </div>

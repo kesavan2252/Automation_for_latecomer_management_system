@@ -173,12 +173,13 @@ const EditStudents = () => {
                       onChange={(e) => setStudent({...student, department: e.target.value})}
                       className="w-full px-4 py-3 rounded-lg border-2 border-indigo-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                     >
-                      <option value="CSE">Computer Science</option>
-                      <option value="ECE">Electronics & Communication</option>
-                      <option value="EEE">Electrical Engineering</option>
-                      <option value="MECH">Mechanical</option>
-                      <option value="CIVIL">Civil</option>
-                      <option value="AIDS">AI & Data Science</option>
+                      <option value="">Select Department</option>
+                    <option value="CSE">CSE</option>
+                    <option value="ECE">ECE</option>
+                    <option value="EEE">EEE</option>
+                    <option value="CIVIL">CIVIL</option>
+                    <option value="MECH">MECH</option>
+                    <option value="AIDS">AIDS</option>
                     </select>
                   </div>
 
