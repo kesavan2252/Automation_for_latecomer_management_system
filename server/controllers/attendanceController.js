@@ -1,6 +1,10 @@
 import pool from "../config/db.js";
 import cron from "node-cron";
 import nodemailer from "nodemailer";
+// Update the Chart.js import
+import { Chart } from 'chart.js/auto';
+import { ChartJSNodeCanvas } from 'chartjs-node-canvas';
+
 // @desc Get latecomer count per department
 // @route GET /api/attendance/department-count
 // Add this function to your controller
@@ -26,14 +30,6 @@ export const getDepartmentCounts = async (req, res) => {
 
 // @desc Mark attendance for a student
 // @route POST /api/attendance/mark-attendance
-// Email Config
-const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-        user: "kesavan.scemdu@gmail.com",
-        pass: "Sce12456.1",
-    },
-});
 
 // Mark Attendance with Late Status
 export const markAttendance = async (req, res) => {
@@ -380,6 +376,375 @@ export const getDepartmentReport = async (req, res) => {
     } catch (error) {
         console.error("Error fetching department report:", error);
         res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+
+// Email configuration
+const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASSWORD
+    }
+});
+
+// Department HOD emails
+const departmentEmails = {
+    "CSE": "suryakesavan6@gmail.com",
+    "ECE": "hod.ece@example.com",
+    "MECH": "hod.mech@example.com",
+    "PRINCIPAL": "principal@example.com"
+};
+
+// Initialize chart generation
+const chartJSNodeCanvas = new ChartJSNodeCanvas({ width: 800, height: 400 });
+
+// Schedule daily reports at 11:50 AM
+cron.schedule('50 11 * * *', async () => {
+    await sendDailyReports();
+});
+
+// Schedule weekly reports every Sunday at 11:50 AM
+cron.schedule('50 11 * * 0', async () => {
+    await sendWeeklyReports();
+});
+
+// Schedule monthly reports on 1st of every month at 11:50 AM
+cron.schedule('50 11 1 * *', async () => {
+    await sendMonthlyReports();
+});
+
+async function generateAttendanceChart(data) {
+    const config = {
+        type: 'bar',
+        data: {
+            labels: Object.keys(data),
+            datasets: [{
+                label: 'Late Comers',
+                data: Object.values(data),
+                backgroundColor: 'rgba(255, 99, 132, 0.5)'
+            }]
+        }
+    };
+    return await chartJSNodeCanvas.renderToBuffer(config);
+}
+
+async function sendDailyReports() {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        
+        // Get department-wise attendance
+        const deptStats = await pool.query(`
+            SELECT 
+                department,
+                COUNT(*) FILTER (WHERE status = 'Late') as late_count,
+                COUNT(*) as total_count
+            FROM attendance
+            WHERE DATE(date) = CURRENT_DATE
+            GROUP BY department
+        `);
+
+        // Generate chart
+        const chartBuffer = await generateAttendanceChart(
+            Object.fromEntries(deptStats.rows.map(r => [r.department, r.late_count]))
+        );
+
+        // Send to HODs
+        for (const dept of Object.keys(departmentEmails)) {
+            if (dept === 'PRINCIPAL') continue;
+            const deptData = deptStats.rows.find(r => r.department === dept) || { late_count: 0, total_count: 0 };
+            
+            await transporter.sendMail({
+                from: process.env.EMAIL_USER,
+                to: departmentEmails[dept],
+                subject: `Daily Attendance Report - ${dept} (${today})`,
+                html: generateDailyEmailTemplate(dept, deptData),
+                attachments: [{
+                    filename: 'attendance-chart.png',
+                    content: chartBuffer
+                }]
+            });
+        }
+
+        // Send consolidated report to Principal
+        await transporter.sendMail({
+            from: process.env.EMAIL_USER,
+            to: departmentEmails.PRINCIPAL,
+            subject: `Daily Attendance Summary - All Departments (${today})`,
+            html: generatePrincipalDailyTemplate(deptStats.rows),
+            attachments: [{
+                filename: 'attendance-chart.png',
+                content: chartBuffer
+            }]
+        });
+
+    } catch (error) {
+        console.error('Error sending daily reports:', error);
+    }
+}
+
+async function sendWeeklyReports() {
+    try {
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(endDate.getDate() - 7);
+
+        // Get weekly statistics
+        const weeklyStats = await pool.query(`
+            SELECT 
+                department,
+                COUNT(*) FILTER (WHERE status = 'Late') as late_count,
+                COUNT(*) as total_count,
+                DATE(date) as attendance_date
+            FROM attendance
+            WHERE date BETWEEN $1 AND $2
+            GROUP BY department, DATE(date)
+            ORDER BY department, attendance_date
+        `, [startDate, endDate]);
+
+        // Generate weekly trend chart
+        const chartData = {};
+        weeklyStats.rows.forEach(row => {
+            if (!chartData[row.department]) {
+                chartData[row.department] = {
+                    dates: [],
+                    counts: []
+                };
+            }
+            chartData[row.department].dates.push(row.attendance_date);
+            chartData[row.department].counts.push(row.late_count);
+        });
+
+        const chartBuffer = await generateWeeklyChart(chartData);
+
+        // Send department-specific reports
+        for (const dept of Object.keys(departmentEmails)) {
+            if (dept === 'PRINCIPAL') continue;
+            const deptData = weeklyStats.rows.filter(r => r.department === dept);
+            
+            await transporter.sendMail({
+                from: process.env.EMAIL_USER,
+                to: departmentEmails[dept],
+                subject: `Weekly Attendance Report - ${dept}`,
+                html: generateWeeklyEmailTemplate(dept, deptData),
+                attachments: [{
+                    filename: 'weekly-trend.png',
+                    content: chartBuffer
+                }]
+            });
+        }
+
+        // Send consolidated report to Principal
+        await transporter.sendMail({
+            from: process.env.EMAIL_USER,
+            to: departmentEmails.PRINCIPAL,
+            subject: 'Weekly Attendance Summary - All Departments',
+            html: generatePrincipalWeeklyTemplate(weeklyStats.rows),
+            attachments: [{
+                filename: 'weekly-trend.png',
+                content: chartBuffer
+            }]
+        });
+
+    } catch (error) {
+        console.error('Error sending weekly reports:', error);
+    }
+}
+
+async function sendMonthlyReports() {
+    try {
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setMonth(endDate.getMonth() - 1);
+
+        // Get monthly statistics with detailed breakdown
+        const monthlyStats = await pool.query(`
+            SELECT 
+                department,
+                COUNT(*) FILTER (WHERE status = 'Late') as late_count,
+                COUNT(*) as total_count,
+                EXTRACT(WEEK FROM date) as week_number,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM date) = 1) as monday_count,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM date) = 2) as tuesday_count,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM date) = 3) as wednesday_count,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM date) = 4) as thursday_count,
+                COUNT(*) FILTER (WHERE EXTRACT(DOW FROM date) = 5) as friday_count
+            FROM attendance
+            WHERE date BETWEEN $1 AND $2
+            GROUP BY department, EXTRACT(WEEK FROM date)
+            ORDER BY department, week_number
+        `, [startDate, endDate]);
+
+        // Generate monthly analytics chart
+        const chartBuffer = await generateMonthlyChart(monthlyStats.rows);
+
+        // Send department-specific reports
+        for (const dept of Object.keys(departmentEmails)) {
+            if (dept === 'PRINCIPAL') continue;
+            const deptData = monthlyStats.rows.filter(r => r.department === dept);
+            
+            await transporter.sendMail({
+                from: process.env.EMAIL_USER,
+                to: departmentEmails[dept],
+                subject: `Monthly Attendance Analysis - ${dept}`,
+                html: generateMonthlyEmailTemplate(dept, deptData),
+                attachments: [{
+                    filename: 'monthly-analysis.png',
+                    content: chartBuffer
+                }]
+            });
+        }
+
+        // Send consolidated report to Principal
+        await transporter.sendMail({
+            from: process.env.EMAIL_USER,
+            to: departmentEmails.PRINCIPAL,
+            subject: 'Monthly Attendance Analysis - All Departments',
+            html: generatePrincipalMonthlyTemplate(monthlyStats.rows),
+            attachments: [{
+                filename: 'monthly-analysis.png',
+                content: chartBuffer
+            }]
+        });
+
+    } catch (error) {
+        console.error('Error sending monthly reports:', error);
+    }
+}
+
+// Add these new chart generation functions
+async function generateWeeklyChart(data) {
+    const config = {
+        type: 'line',
+        data: {
+            labels: Object.keys(data)[0] ? data[Object.keys(data)[0]].dates : [],
+            datasets: Object.keys(data).map(dept => ({
+                label: dept,
+                data: data[dept].counts,
+                fill: false,
+                borderColor: getRandomColor()
+            }))
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Late Arrivals'
+                    }
+                }
+            }
+        }
+    };
+    return await chartJSNodeCanvas.renderToBuffer(config);
+}
+
+async function generateMonthlyChart(data) {
+    const config = {
+        type: 'bar',
+        data: {
+            labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+            datasets: Object.keys(departmentEmails)
+                .filter(dept => dept !== 'PRINCIPAL')
+                .map(dept => ({
+                    label: dept,
+                    data: data.filter(r => r.department === dept).map(r => r.late_count),
+                    backgroundColor: getRandomColor(0.5)
+                }))
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Late Arrivals per Week'
+                    }
+                }
+            }
+        }
+    };
+    return await chartJSNodeCanvas.renderToBuffer(config);
+}
+
+// Helper function for random colors
+function getRandomColor(alpha = 1) {
+    const r = Math.floor(Math.random() * 255);
+    const g = Math.floor(Math.random() * 255);
+    const b = Math.floor(Math.random() * 255);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+// Add these new email templates
+function generateWeeklyEmailTemplate(dept, stats) {
+    return `
+        <h2>${dept} Department - Weekly Attendance Report</h2>
+        <table border="1">
+            <tr>
+                <th>Date</th>
+                <th>Total Students</th>
+                <th>Late Arrivals</th>
+                <th>Percentage</th>
+            </tr>
+            ${stats.map(day => `
+                <tr>
+                    <td>${new Date(day.attendance_date).toLocaleDateString()}</td>
+                    <td>${day.total_count}</td>
+                    <td>${day.late_count}</td>
+                    <td>${((day.late_count / day.total_count) * 100).toFixed(2)}%</td>
+                </tr>
+            `).join('')}
+        </table>
+        <p>Weekly Trend Analysis Attached</p>
+    `;
+}
+
+function generateMonthlyEmailTemplate(dept, stats) {
+    return `
+        <h2>${dept} Department - Monthly Attendance Analysis</h2>
+        <h3>Weekly Breakdown</h3>
+        <table border="1">
+            <tr>
+                <th>Week</th>
+                <th>Total</th>
+                <th>Late</th>
+                <th>Mon</th>
+                <th>Tue</th>
+                <th>Wed</th>
+                <th>Thu</th>
+                <th>Fri</th>
+            </tr>
+            ${stats.map(week => `
+                <tr>
+                    <td>Week ${week.week_number}</td>
+                    <td>${week.total_count}</td>
+                    <td>${week.late_count}</td>
+                    <td>${week.monday_count}</td>
+                    <td>${week.tuesday_count}</td>
+                    <td>${week.wednesday_count}</td>
+                    <td>${week.thursday_count}</td>
+                    <td>${week.friday_count}</td>
+                </tr>
+            `).join('')}
+        </table>
+        <p>Monthly Analysis Chart Attached</p>
+    `;
+}
+
+// Add this at the bottom of your exports
+export const testEmailReports = async (req, res) => {
+    try {
+        console.log("🧪 Testing email reports...");
+        
+        // Test daily report
+        await sendDailyReports();
+        
+        res.json({ message: "Email test triggered successfully" });
+    } catch (error) {
+        console.error("❌ Email test failed:", error);
+        res.status(500).json({ error: "Email test failed" });
     }
 };
 

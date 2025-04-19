@@ -8,6 +8,7 @@ import {
   filterAttendance,
   addAttendance,
   getDepartmentReport,
+  testEmailReports
 } from "../controllers/attendanceController.js";
 
 const router = express.Router();
@@ -20,5 +21,7 @@ router.get("/filter", getFilteredAttendance); // ✅ Added missing route
 router.get("/filter-by-department", filterAttendance);
 router.post("/add", addAttendance);
 router.get("/department-report", getDepartmentReport);
+// Add this line to support both GET and POST
+router.get('/test-email', testEmailReports);
 
 export default router;
