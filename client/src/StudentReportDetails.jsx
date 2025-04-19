@@ -55,10 +55,18 @@ const StudentReportDetails = () => {
     setIsExportOpen(!isExportOpen);
   };
 
-  // Modified date formatter to exclude time
+  // Update the formatDate function to include time
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" });
+    return date.toLocaleString("en-IN", { 
+      timeZone: "Asia/Kolkata",
+      day: 'numeric',
+      month: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
   };
 
   const showNotification = (message, type) => {
@@ -128,35 +136,31 @@ const StudentReportDetails = () => {
               <span className="ml-2">Back to Search</span>
             </button>
 
-            <div className="relative">
-              <button
-                onClick={toggleExport}
-                className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition-colors flex items-center"
-              >
-                Export Report
-                <span className="ml-2">▼</span>
-              </button>
-              {isExportOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-indigo-100 overflow-hidden z-50">
-                  <button
-                    onClick={exportToPDF}
-                    className="w-full px-4 py-3 text-left hover:bg-indigo-50 text-indigo-900 flex items-center"
-                  >
-                    <span>Export as PDF</span>
-                  </button>
-                  <button
-                    onClick={exportToExcel}
-                    className="w-full px-4 py-3 text-left hover:bg-indigo-50 text-indigo-900 flex items-center"
-                  >
-                    <span>Export as Excel</span>
-                  </button>
-                </div>
-              )}
-            </div>
+            {attendance.length > 0 && !isLoading && !error && (
+              <div className="relative">
+                <button
+                  onClick={toggleExport}
+                  className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition-colors flex items-center"
+                >
+                  Export Report
+                  <span className="ml-2">▼</span>
+                </button>
+                {isExportOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-indigo-100 overflow-hidden z-50">
+                    <button onClick={exportToPDF} className="w-full px-4 py-3 text-left hover:bg-indigo-50 text-indigo-900">
+                      Export as PDF
+                    </button>
+                    <button onClick={exportToExcel} className="w-full px-4 py-3 text-left hover:bg-indigo-50 text-indigo-900">
+                      Export as Excel
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {error ? (
-            <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg">
+            <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg animate-fadeIn">
               <p className="text-red-700">{error}</p>
             </div>
           ) : isLoading ? (
@@ -187,6 +191,7 @@ const StudentReportDetails = () => {
                 </div>
               )}
 
+              // Replace the existing no-records section with this enhanced version
               {attendance.length > 0 ? (
                 <div className="bg-white rounded-2xl shadow-lg overflow-hidden animate-fadeIn">
                   <table className="w-full">
@@ -200,7 +205,7 @@ const StudentReportDetails = () => {
                       {attendance.map((entry, index) => (
                         <tr key={index} className="hover:bg-indigo-50">
                           <td className="px-6 py-4 text-sm text-indigo-900">{formatDate(entry.date)}</td>
-                          <td className="px-6 py-4 text-sm">
+                          <td className="px-6 py-4">
                             <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                               entry.status === 'Late' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
                             }`}>
@@ -214,9 +219,102 @@ const StudentReportDetails = () => {
                 </div>
               ) : (
                 <div className="bg-white rounded-2xl shadow-lg p-8 text-center animate-fadeIn">
-                  <p className="text-gray-500">No attendance records found for the selected period.</p>
-                </div>
-              )}
+                  <div className="flex flex-col items-center justify-center space-y-6">
+                    <div className="relative w-40 h-40">
+                      <svg className="w-full h-full" viewBox="0 0 100 100">
+                        {/* Animated circles */}
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r="45"
+                          fill="none"
+                          stroke="#E0E7FF"
+                          strokeWidth="2"
+                          className="animate-spin-slow"
+                        />
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r="35"
+                          fill="none"
+                          stroke="#C7D2FE"
+                          strokeWidth="2"
+                          className="animate-spin-reverse"
+                        />
+                        
+                        {/* Animated search icon */}
+                        <g className="animate-bounce-gentle">
+                          <circle
+                            cx="45"
+                            cy="45"
+                            r="15"
+                            fill="none"
+                            stroke="#6366F1"
+                            strokeWidth="2"
+                            className="animate-pulse"
+                          />
+                          <line
+                            x1="55"
+                            y1="55"
+                            x2="65"
+                            y2="65"
+                            stroke="#6366F1"
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                          />
+                          <path
+                            d="M43 40c0-2 1-3 2-3s2 1 2 3c0 .5-.5 1.5-2 3-1.5 1.5-2 2.5-2 4h4"
+                            stroke="#6366F1"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            fill="none"
+                            className="animate-dash"
+                          >
+                            <animate
+                              attributeName="stroke-dasharray"
+                              values="0,100;100,100"
+                              dur="2s"
+                              repeatCount="indefinite"
+                            />
+                          </path>
+                        </g>
+                      </svg>
+                    </div>
+                    <div className="space-y-4 animate-fadeIn">
+                      <h3 className="text-2xl font-semibold text-indigo-900">No Records Found</h3>
+                      <div className="space-y-2">
+                        <p className="text-gray-500">No attendance records available for</p>
+                        <p className="text-indigo-600 font-medium text-lg animate-pulse">
+                          Roll No: {rollNo}
+                        </p>
+                        <p className="text-gray-500">between</p>
+                        <div className="flex items-center justify-center space-x-3 text-indigo-600 font-medium">
+                          <span>{formatDate(startDate)}</span>
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                          </svg>
+                          <span>{formatDate(endDate)}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleBack}
+                      className="mt-6 px-8 py-3 bg-indigo-100 text-indigo-600 rounded-lg hover:bg-indigo-200 
+                      transition-all duration-300 transform hover:scale-105 flex items-center space-x-2 group"
+                    >
+                      <svg 
+                        className="w-5 h-5 transform group-hover:-translate-x-1 transition-transform" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                      </svg>
+                      <span>Try Different Dates</span>
+                    </button>
+                  </div>
+                  </div>
+                )}
             </>
           )}
         </div>

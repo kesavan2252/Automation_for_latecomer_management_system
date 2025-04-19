@@ -6,8 +6,9 @@ import {
     importStudents, 
     getStudentByRollNo, 
     updateStudent,
-    getStudentByRollNoAndBatch} 
-    from '../controllers/studentController.js'; // Import functions
+    getStudentByRollNoAndBatch
+} 
+ from '../controllers/studentController.js'; // Import functions
 
 import multer from 'multer';  
 
@@ -17,6 +18,8 @@ const router = express.Router();
 
 // ✅ Fetch all students
 router.get('/', protect, getAllStudents);
+
+
 
 // ✅ Add a new student
 router.post('/',authenticateToken ,addStudent);
@@ -46,6 +49,8 @@ router.get('/:rollNo', protect, (req, res, next) => {
 
 // ✅ Update student details
 router.put("/:roll_no", updateStudent);
+
+
 
 
 // ✅ Delete Student by Roll Number
