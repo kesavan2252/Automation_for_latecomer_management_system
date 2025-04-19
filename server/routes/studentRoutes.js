@@ -104,6 +104,28 @@ router.delete('/:rollNo', authenticateToken, async (req, res) => {
 });
 
 
+// Add this route for deleting entire batch
+router.delete('/batch/:batch', authenticateToken, async (req, res) => {
+    const { batch } = req.params;
+    
+    try {
+        const result = await pool.query(
+            "DELETE FROM students WHERE batch = $1 RETURNING *",
+            [batch.trim()]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: "No students found in this batch." });
+        }
+
+        res.json({ 
+            message: `Successfully deleted ${result.rowCount} students from batch ${batch}` 
+        });
+    } catch (error) {
+        console.error("Error deleting batch:", error);
+        res.status(500).json({ message: "Server error." });
+    }
+});
 
 
 export default router;

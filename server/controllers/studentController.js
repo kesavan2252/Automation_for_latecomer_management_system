@@ -189,34 +189,28 @@ export const deleteBatch = async (req, res) => {
 
 export const deleteBatchStudents = async (req, res) => {
   try {
-      const { department, batch } = req.body;
-
-      console.log("📌 Deleting batch:", department, batch); // Debug log
-
-      // Ensure department and batch are provided
-      if (!department || !batch) {
-          return res.status(400).json({ message: "Department and batch are required." });
-      }
+      const { batch } = req.params;
+      console.log("📌 Deleting batch:", batch);
 
       // Check if students exist before deleting
       const checkStudents = await pool.query(
-          "SELECT * FROM students WHERE department = $1 AND batch = $2",
-          [department.trim(), batch.trim()]
+          "SELECT * FROM students WHERE batch = $1",
+          [batch.trim()]
       );
 
       if (checkStudents.rowCount === 0) {
-          return res.status(404).json({ message: "Students not found." });
+          return res.status(404).json({ message: "No students found in this batch." });
       }
 
-      // Delete all students from the given department and batch
+      // Delete all students from the given batch
       const result = await pool.query(
-          "DELETE FROM students WHERE department = $1 AND batch = $2 RETURNING *",
-          [department.trim(), batch.trim()]
+          "DELETE FROM students WHERE batch = $1 RETURNING *",
+          [batch.trim()]
       );
 
       res.json({
-          message: `${result.rowCount} students deleted successfully.`,
-          deletedStudents: result.rows,
+          message: `Successfully deleted ${result.rowCount} students from batch ${batch}`,
+          deletedCount: result.rowCount,
       });
 
   } catch (error) {

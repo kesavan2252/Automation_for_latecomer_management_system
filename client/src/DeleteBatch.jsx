@@ -1,136 +1,158 @@
 import { useState } from "react";
 import Sidebar from "./components/Sidebar";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const DeleteBatch = () => {
   const [batch, setBatch] = useState("");
-  const [department, setDepartment] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [error, setError] = useState("");
-  const [successMessage, setSuccessMessage] = useState(""); // ✅ New state for success message
+  const [deletedCount, setDeletedCount] = useState(null);
 
-  // Retrieve token from localStorage
-  const token = localStorage.getItem("token");
-
-  // Function to handle Delete Button Click
   const handleDelete = () => {
-    if (!batch || !department) {
-      setError("❌ Please select both Batch and Department.");
+    if (!batch) {
+      toast.warn("Please select a Batch", { position: "top-right" });
       return;
     }
-    setError(""); // Clear previous error
     setShowConfirmation(true);
   };
 
-  // Function to confirm deletion
   const confirmDelete = async () => {
+    setIsLoading(true);
     try {
-      console.log(`📌 Deleting batch: ${department} - ${batch}`);
-
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/students/${department}/${batch}`,
+        `${import.meta.env.VITE_API_BASE_URL}/api/students/batch/${batch}`,
         {
           method: "DELETE",
           headers: {
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
         }
       );     
 
       const data = await response.json();
-      console.log("📌 API Response:", data);
 
       if (!response.ok) {
         throw new Error(data.message || "Failed to delete batch");
       }
 
-      setSuccessMessage(`✅ ${data.message}`);
-      setShowConfirmation(false); // ✅ Hide confirmation popup
-      setBatch(""); // ✅ Reset batch selection
-      setDepartment(""); // ✅ Reset department selection
+      setDeletedCount(data.deletedCount);
+      toast.success(`✅ ${data.message}`, { position: "top-right" });
+      setBatch("");
     } catch (error) {
-      console.error("❌ Error deleting batch:", error);
-      setError(error.message || "Failed to delete batch.");
+      toast.error(`❌ ${error.message}`, { position: "top-right" });
+    } finally {
+      setIsLoading(false);
+      setShowConfirmation(false);
     }
   };
 
   return (
-    <div className="flex bg-gray-200 min-h-screen">
+    <div className="flex min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
       <Sidebar />
+      <div className="flex-1 p-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-white rounded-2xl shadow-lg p-8 backdrop-blur-sm border border-indigo-100">
+            <div className="flex items-center justify-between mb-8">
+              <h1 className="text-2xl font-bold text-indigo-900 flex items-center gap-3">
+                <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Batch Deletion Portal
+              </h1>
+              {deletedCount !== null && (
+                <div className="bg-green-100 text-green-800 px-4 py-2 rounded-lg">
+                  Last deletion: {deletedCount} students removed
+                </div>
+              )}
+            </div>
 
-      {/* Main Content */}
-      <div className="bg-[#C3DBE8] min-h-[565px] w-[1110px] rounded-lg mt-1 ml-1 p-3">
-        <div className="p-8 ">
-          <h1 className="text-2xl font-bold mb-4">Delete Students Details (Batch)</h1>
+            <div className="space-y-6">
+              <div className="bg-red-50 rounded-lg p-6 border border-red-100">
+                <div className="flex items-center gap-3 text-red-700 mb-3">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <span className="font-semibold text-lg">Warning</span>
+                </div>
+                <p className="text-red-600">
+                  This action will permanently delete all student records from the selected batch across all departments. 
+                  This operation cannot be undone and all associated data will be lost.
+                </p>
+              </div>
 
-          {/* Batch Selection */}
-          <label className="block text-lg font-medium">Select Batch:</label>
-          <select
-            className="w-full p-2 border rounded-md mt-2"
-            value={batch}
-            onChange={(e) => setBatch(e.target.value)}
-          >
-            <option value="">Select Batch</option>
-            <option value="2021-2025">2021-2025</option>
-            <option value="2022-2026">2022-2026</option>
-            <option value="2023-2027">2023-2027</option>
-            <option value="2024-2028">2024-2028</option>
-            <option value="2025-2029">2025-2029</option>
-          </select>
+              <div className="bg-white rounded-xl p-6 border-2 border-indigo-100">
+                <label className="block text-sm font-medium text-indigo-900 mb-2">Select Academic Batch</label>
+                <select
+                  value={batch}
+                  onChange={(e) => setBatch(e.target.value)}
+                  className="w-full px-4 py-3 rounded-lg border-2 border-indigo-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
+                >
+                  <option value="">Choose a batch to delete</option>
+                  {Array.from({length: 5}, (_, i) => {
+                    const year = 2021 + i;
+                    return (
+                      <option key={year} value={`${year}-${year + 4}`}>
+                        {year} - {year + 4}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
 
-          {/* Department Selection */}
-          <label className="block mt-4 text-lg font-medium">Select Department:</label>
-          <select
-            className="w-full p-2 border rounded-md mt-2"
-            value={department}
-            onChange={(e) => setDepartment(e.target.value)}
-          >
-            <option value="">Select Department</option>
-            <option value="CSE">CSE</option>
-            <option value="ECE">ECE</option>
-            <option value="MECH">MECH</option>
-            <option value="CIVIL">CIVIL</option>
-          </select>
-
-          {/* Success and Error Messages */}
-          {successMessage && <p className="text-green-600 mt-2">{successMessage}</p>}
-          {error && <p className="text-red-500 mt-2">{error}</p>}
-
-          {/* Delete Button */}
-          <button
-            onClick={handleDelete}
-            className="bg-red-500 text-white px-6 py-2 rounded-md mt-4"
-          >
-            Delete
-          </button>
-        </div>
-      </div>
-
-      {/* Confirmation Popup with Overlay */}
-      {showConfirmation && (
-        <>
-          {/* Overlay to prevent outside clicks */}
-          <div className="fixed inset-0 bg-transparent bg-opacity-50 z-40"></div>
-
-          {/* Confirmation Box */}
-          <div className="fixed top-1/3 left-1/2 transform -translate-x-1/2 bg-white p-6 rounded-md shadow-lg z-50">
-            <p className="text-lg font-medium mb-4">Are you sure you want to delete?</p>
-            <div className="flex justify-between">
               <button
-                onClick={confirmDelete}
-                className="bg-red-500 text-white px-6 py-2 rounded-md"
+                onClick={handleDelete}
+                disabled={isLoading || !batch}
+                className="w-full bg-red-600 text-white py-4 rounded-xl hover:bg-red-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Yes
-              </button>
-              <button
-                onClick={() => setShowConfirmation(false)}
-                className="bg-gray-500 text-white px-6 py-2 rounded-md"
-              >
-                No
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Delete Entire Batch
               </button>
             </div>
           </div>
-        </>
+        </div>
+      </div>
+
+      {showConfirmation && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-8 w-[480px] shadow-2xl animate-slideUp">
+            <div className="text-center mb-6">
+              <div className="mx-auto w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                <svg className="w-10 h-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">Confirm Batch Deletion</h3>
+              <p className="text-gray-600">
+                Are you sure you want to delete all students from batch <span className="font-semibold">{batch}</span>? 
+                This action cannot be undone.
+              </p>
+            </div>
+            <div className="flex gap-4">
+              <button
+                onClick={() => setShowConfirmation(false)}
+                className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={isLoading}
+                className="flex-1 px-6 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all font-medium disabled:opacity-50 flex items-center justify-center"
+              >
+                {isLoading ? (
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                ) : (
+                  "Delete Batch"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
+      <ToastContainer />
     </div>
   );
 };
