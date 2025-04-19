@@ -7,6 +7,7 @@ import {
     getStudentByRollNo, 
     updateStudent,
     getStudentByRollNoAndBatch
+    
 } 
  from '../controllers/studentController.js'; // Import functions
 
@@ -58,21 +59,46 @@ router.put("/:roll_no", updateStudent);
 router.get('/:rollNo/:batch',authenticateToken, getStudentByRollNoAndBatch);
 
 
-  router.delete('/:department/:batch', async (req, res) => {
-    const { department, batch } = req.params;
+  // Update the delete route
+  router.delete('/delete/:department/:batch', authenticateToken, async (req, res) => {
+      const { department, batch } = req.params;
+      const { rollNo } = req.body;
+      
+      try {
+          const result = await pool.query(
+              "DELETE FROM students WHERE department = $1 AND batch = $2 AND roll_no = $3 RETURNING *",
+              [department.trim(), batch.trim(), rollNo.trim()]
+          );
+  
+          if (result.rowCount === 0) {
+              return res.status(404).json({ message: "Student not found." });
+          }
+  
+          res.json({ message: "Student deleted successfully" });
+      } catch (error) {
+          console.error("Error deleting student:", error);
+          res.status(500).json({ message: "Server error." });
+      }
+  });
+
+
+// Add this route for deleting individual student
+router.delete('/:rollNo', authenticateToken, async (req, res) => {
+    const { rollNo } = req.params;
+    
     try {
         const result = await pool.query(
-            "DELETE FROM students WHERE department = $1 AND batch = $2 RETURNING *",
-            [department.trim(), batch.trim()]
+            "DELETE FROM students WHERE roll_no = $1 RETURNING *",
+            [rollNo]
         );
 
         if (result.rowCount === 0) {
-            return res.status(404).json({ message: "Students Data not found." });
+            return res.status(404).json({ message: "Student not found." });
         }
 
-        res.json({ message: `${result.rowCount} students deleted successfully.` });
+        res.json({ message: "Student deleted successfully" });
     } catch (error) {
-        console.error("Error deleting batch:", error);
+        console.error("Error deleting student:", error);
         res.status(500).json({ message: "Server error." });
     }
 });

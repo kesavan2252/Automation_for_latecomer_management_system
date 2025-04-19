@@ -1,220 +1,220 @@
 import { useState } from "react";
 import Sidebar from "./components/Sidebar";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const DeleteStudent = () => {
   const [rollNo, setRollNo] = useState("");
   const [batch, setBatch] = useState("");
   const [student, setStudent] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [error, setError] = useState("");
-  const [backVisible, setBackVisible] = useState(false);
-  const [notification, setNotification] = useState(""); // New state for notification
 
   const handleSubmit = async () => {
     if (!rollNo.trim() || !batch) {
-        setError("Please enter Roll Number and select a Batch.");
-        return;
+      toast.warn("Please enter Roll Number and select a Batch", {
+        position: "top-right"
+      });
+      return;
     }
 
-    setError("");
+    setIsLoading(true);
     try {
-        const response = await fetch(
-            `${import.meta.env.VITE_API_BASE_URL}/api/students/${rollNo}/${batch}`, 
-            {
-                method: "GET",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${localStorage.getItem("token")}`,
-                },
-            }
-        );
-
-        if (!response.ok) {
-            throw new Error("Student not found");
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/api/students/${rollNo}/${batch}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
         }
+      );
 
-        const fetchedStudent = await response.json();
-        setStudent(fetchedStudent);
-        setBackVisible(true);
+      if (!response.ok) {
+        throw new Error("Student not found");
+      }
+
+      const fetchedStudent = await response.json();
+      setStudent(fetchedStudent);
+      toast.success("Student record found!", { position: "top-right" });
     } catch (error) {
-        setError("Student not found. Check Roll No and Batch.");
-        setStudent(null);
-        setBackVisible(false);
+      toast.error("Student not found. Check Roll No and Batch.", {
+        position: "top-right"
+      });
+      setStudent(null);
+    } finally {
+      setIsLoading(false);
     }
-};
-
-
-
-  const handleClear = () => {
-    setRollNo("");
   };
 
-  const handleDelete = async () => {
-    if (!student) {
-        setError("No student data found. Please check Roll No and Batch.");
-        return;
-    }
-    setShowConfirmation(true);
-};
-
+  const handleDelete = () => setShowConfirmation(true);
 
   const confirmDelete = async (choice) => {
-    if (choice === "yes") {
-        try {
-            const response = await fetch(
-                `${import.meta.env.VITE_API_BASE_URL}/api/students/${rollNo}/${batch}`,
-                {
-                    method: "DELETE",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${localStorage.getItem("token")}`,
-                    },
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error("Student not found or deletion failed");
+      if (choice === "no") {
+        setShowConfirmation(false);
+        return;
+      }
+  
+      setIsLoading(true);
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL}/api/students/${student.roll_no}`,
+          {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
             }
-
-            setNotification("Student deleted successfully!");
-            setTimeout(() => setNotification(""), 3000); 
-
-            setStudent(null);
-            setRollNo("");
-            setBatch("");
-        } catch (error) {
-            console.error("Error deleting student:", error);
-            setError("Failed to delete student. Ensure the Roll No and Batch are correct.");
+          }
+        );
+  
+        if (!response.ok) {
+          throw new Error("Failed to delete student");
         }
-    }
-    setShowConfirmation(false);
-};
-
+  
+        toast.success("Student deleted successfully!", { position: "top-right" });
+        setStudent(null);
+        setRollNo("");
+        setBatch("");
+      } catch (error) {
+        toast.error("Failed to delete student. Please try again.", {
+          position: "top-right"
+        });
+      } finally {
+        setIsLoading(false);
+        setShowConfirmation(false);
+      }
+  };
 
   return (
-    <div className="flex bg-gray-200 min-h-screen">
+    <div className="flex min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
       <Sidebar />
+      <div className="flex-1 p-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-white rounded-2xl shadow-lg p-8 backdrop-blur-sm border border-indigo-100">
+            <h1 className="text-2xl font-bold text-indigo-900 mb-8 flex items-center gap-3">
+              <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              Delete Student Record
+            </h1>
 
-      {/* Main Content */}
-      <div className="bg-[#C3DBE8] min-h-[565px] w-[1110px] rounded-lg mt-1 ml-1 p-3">
-        <div className="p-8 ">
-          <h1 className="text-2xl font-bold mb-4">Delete Students Details (Individual)</h1>
+            <div className="grid md:grid-cols-2 gap-6 mb-6">
+              <div>
+                <label className="block text-sm font-medium text-indigo-900 mb-2">Roll Number</label>
+                <input
+                  type="text"
+                  value={rollNo}
+                  onChange={(e) => setRollNo(e.target.value.toUpperCase())}
+                  placeholder="Enter Roll Number"
+                  className="w-full px-4 py-3 rounded-lg border-2 border-indigo-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
+                />
+              </div>
 
-          {/* Roll Number Input */}
-          <label className="block text-lg font-medium">Roll No:</label>
-          <div className="relative">
-            <input
-              type="text"
-              className="w-full p-2 border rounded-md mt-2 pr-10"
-              value={rollNo}
-              onChange={(e) => {
-                const value = e.target.value;
-                setRollNo(value);
-              }}
-              placeholder="Enter Roll No"
-            />
-            {rollNo && (
-              <button className="absolute right-2 top-3 text-gray-500" onClick={handleClear}>
-                clear
-              </button>
+              <div>
+                <label className="block text-sm font-medium text-indigo-900 mb-2">Academic Batch</label>
+                <select
+                  value={batch}
+                  onChange={(e) => setBatch(e.target.value)}
+                  className="w-full px-4 py-3 rounded-lg border-2 border-indigo-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
+                >
+                  <option value="">Select Batch</option>
+                  {Array.from({length: 5}, (_, i) => {
+                    const year = 2021 + i;
+                    return (
+                      <option key={year} value={`${year}-${year + 4}`}>
+                        {year} - {year + 4}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            </div>
+
+            <button
+              onClick={handleSubmit}
+              disabled={isLoading}
+              className="w-full bg-indigo-600 text-white py-3 rounded-xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
+            >
+              {isLoading ? (
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+              ) : (
+                <>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  Search Student
+                </>
+              )}
+            </button>
+
+            {student && (
+              <div className="mt-8 bg-red-50 rounded-xl p-6 border border-red-100">
+                <h2 className="text-lg font-semibold text-red-900 mb-4">Student Details</h2>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="p-4 bg-white rounded-lg border border-red-200">
+                    <p className="text-sm text-red-700 mb-1">Roll Number</p>
+                    <p className="font-medium text-red-900">{student.roll_no}</p>
+                  </div>
+                  <div className="p-4 bg-white rounded-lg border border-red-200">
+                    <p className="text-sm text-red-700 mb-1">Name</p>
+                    <p className="font-medium text-red-900">{student.name}</p>
+                  </div>
+                  <div className="p-4 bg-white rounded-lg border border-red-200">
+                    <p className="text-sm text-red-700 mb-1">Department</p>
+                    <p className="font-medium text-red-900">{student.department}</p>
+                  </div>
+                  <div className="p-4 bg-white rounded-lg border border-red-200">
+                    <p className="text-sm text-red-700 mb-1">Batch</p>
+                    <p className="font-medium text-red-900">{student.batch}</p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleDelete}
+                  disabled={isLoading}
+                  className="mt-6 w-full bg-red-600 text-white py-3 rounded-xl hover:bg-red-700 transition-all flex items-center justify-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  Delete Student Record
+                </button>
+              </div>
             )}
           </div>
+        </div>
+      </div>
 
-          {/* Batch Selection */}
-          <label className="block mt-4 text-lg font-medium">Select Batch:</label>
-          <select
-            className="w-full p-2 border rounded-md mt-2"
-            value={batch}
-            onChange={(e) => setBatch(e.target.value)}
-          >
-            <option value="">Select Batch</option>
-            <option value="2021-2025">2021-2025</option>
-            <option value="2022-2026">2022-2026</option>
-            <option value="2023-2027">2023-2027</option>
-            <option value="2024-2028">2024-2028</option>
-            <option value="2025-2029">2025-2029</option>
-          </select>
-
-          {/* Back Button */}
-          {backVisible && (
-            <button
-              onClick={() => {
-                setRollNo("");
-                setBatch("");
-                setStudent(null);
-                setBackVisible(false);
-              }}
-              className="bg-gray-500 text-white px-6 py-2 rounded-md mt-4"
-            >
-              Back
-            </button>
-          )}
-
-          {/* Error Message */}
-          {error && <p className="text-red-500 mt-2">{error}</p>}
-
-          {/* Submit Button */}
-          <button onClick={handleSubmit} className="bg-green-500 text-white px-6 py-2 ml-4 rounded-md mt-4">
-            View
-          </button>
-
-          {/* Display Student Data */}
-          {student && (
-            <div className="mt-6 bg-white p-4 rounded-md shadow-md">
-              <h2 className="text-xl font-semibold mb-2">Student Details</h2>
-              <table className="w-full border">
-                <thead>
-                  <tr className="bg-gray-200">
-                    <th className="border p-2">Roll No</th>
-                    <th className="border p-2">Name</th>
-                    <th className="border p-2">Department</th>
-                    <th className="border p-2">Batch</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td className="border p-2">{student.roll_no}</td>
-                    <td className="border p-2">{student.name}</td>
-                    <td className="border p-2">{student.department}</td>
-                    <td className="border p-2">{student.batch}</td>
-                  </tr>
-                </tbody>
-              </table>
-
-              {/* Delete Button */}
-              <button onClick={handleDelete} className="bg-red-500 text-white px-6 py-2 rounded-md mt-4">
+      {/* Confirmation Modal */}
+      {showConfirmation && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-96 shadow-2xl animate-slideUp">
+            <div className="text-center mb-6">
+              <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">Confirm Deletion</h3>
+              <p className="text-gray-500 mt-2">Are you sure you want to delete this student record? This action cannot be undone.</p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => confirmDelete("no")}
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => confirmDelete("yes")}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all"
+              >
                 Delete
               </button>
             </div>
-          )}
-
-          {/* Confirmation Popup */}
-          {showConfirmation && (
-            <>
-              <div className="fixed inset-0 bg-transparent bg-opacity-30  z-40"></div>
-
-              <div className="fixed top-1/3 left-1/2 transform -translate-x-1/2 bg-white p-6 rounded-md shadow-lg z-50">
-                <p className="text-lg font-medium mb-4">Are you sure you want to delete?</p>
-                <div className="flex justify-between">
-                  <button onClick={() => confirmDelete("yes")} className="bg-red-500 text-white px-6 py-2 rounded-md">
-                    Yes
-                  </button>
-                  <button onClick={() => confirmDelete("no")} className="bg-gray-500 text-white px-6 py-2 rounded-md">
-                    No
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* Notification Box */}
-          {notification && (
-            <div className="fixed top-5 right-5 bg-green-500 text-white p-4 rounded-md shadow-md z-50">
-              {notification}
-            </div>
-          )}
+          </div>
         </div>
-      </div>
+      )}
+      <ToastContainer />
     </div>
   );
 };
