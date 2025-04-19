@@ -63,8 +63,57 @@ const ScannerPage = () => {
     const [scannerStatus, setScannerStatus] = useState("Waiting for scan...");
     const [lastScanTime, setLastScanTime] = useState(null);
 
-    // Modify fetchAttendance to handle scanner status
-    // Update the fetchAttendance function's time handling
+    // Keep only this single fetchAttendance function
+
+
+    // Single time update effect
+    useEffect(() => {
+        const updateTime = () => {
+            const now = new Date();
+            const istTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+            setCurrentTime(istTime);
+        };
+        
+        updateTime();
+        const interval = setInterval(updateTime, 1000);
+        return () => clearInterval(interval);
+    }, []);
+
+    // Remove duplicate useEffect for hardware check
+    useEffect(() => {
+        checkHardware();
+        const interval = setInterval(() => {
+            checkHardware();
+        }, 5000);
+        return () => clearInterval(interval);
+    }, []);
+
+    // Keep only one time update effect
+    useEffect(() => {
+        const updateTime = () => {
+            const now = new Date();
+            const istTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+            setCurrentTime(istTime);
+        };
+        
+        updateTime();
+        const interval = setInterval(updateTime, 1000);
+        return () => clearInterval(interval);
+    }, []);
+
+    // Keep only one keyboard event handler
+    useEffect(() => {
+        const handleKeyPress = async (event) => {
+            if (event.key === "Enter" && manualRollNo) {
+                await fetchAttendance(manualRollNo);
+            }
+        };
+
+        document.addEventListener("keydown", handleKeyPress);
+        return () => document.removeEventListener("keydown", handleKeyPress);
+    }, [manualRollNo]);
+
+    // Keep only one fetchAttendance function
     const fetchAttendance = async (rollNo) => {
         try {
             setScannerStatus("Processing scan...");
@@ -82,17 +131,13 @@ const ScannerPage = () => {
             }
 
             if (data.record) {
-                // Format the time properly using the server's timestamp
                 const istTime = new Date(data.record.date);
                 const formattedTime = istTime.toLocaleString('en-IN', {
                     timeZone: 'Asia/Kolkata',
-                    day: 'numeric',
-                    month: 'numeric',
-                    year: 'numeric',
                     hour: '2-digit',
                     minute: '2-digit',
                     second: '2-digit',
-                    hour12: true
+                    hour12: false
                 });
 
                 setScannedData({
@@ -121,35 +166,7 @@ const ScannerPage = () => {
         }
     };
 
-    // Update the current time display format
-    // Update timer logic for correct IST display
-    useEffect(() => {
-        const updateTime = () => {
-            const now = new Date();
-            const istTime = new Date(now.getTime() + (5.5 * 60 * 60 * 1000));
-            setCurrentTime(istTime);
-        };
-        
-        updateTime();
-        const interval = setInterval(updateTime, 1000);
-        return () => clearInterval(interval);
-    }, []);
-
-    // In the JSX where current time is displayed
-    <span className="text-lg font-semibold">
-        {currentTime.toLocaleString('en-IN', {
-            timeZone: 'Asia/Kolkata',
-            day: 'numeric',
-            month: 'numeric',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: true
-        })}
-    </span>
-
-    // Add handleManualEntry function
+    // Keep handleManualEntry function
     const handleManualEntry = async () => {
         if (!manualRollNo) {
             showNotification("Please enter a Roll Number!", "warning");
