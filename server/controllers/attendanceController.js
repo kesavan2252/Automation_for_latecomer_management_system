@@ -94,62 +94,6 @@ export const markAttendance = async (req, res) => {
 };
 
 
-// 🕚 Schedule Report Emails at 11:45 AM
-cron.schedule("45 11 * * *", async () => {
-    try {
-        const today = new Date().toISOString().split("T")[0];
-
-        // Get Department-wise Attendance
-        const departmentAttendance = await pool.query(
-            "SELECT department, roll_no, status, date FROM attendance WHERE date::date = $1",
-            [today]
-        );
-
-        if (departmentAttendance.rows.length === 0) return;
-
-        // Group by Department
-        const departmentReports = departmentAttendance.rows.reduce((acc, record) => {
-            acc[record.department] = acc[record.department] || [];
-            acc[record.department].push(record);
-            return acc;
-        }, {});
-
-        // Send Emails to Department Officials
-        for (const dept in departmentReports) {
-            const deptEmail = getDepartmentEmail(dept);
-            if (!deptEmail) continue;
-
-            await transporter.sendMail({
-                from: "your-email@gmail.com",
-                to: deptEmail,
-                subject: `Daily Attendance Report - ${dept}`,
-                text: JSON.stringify(departmentReports[dept], null, 2),
-            });
-        }
-
-        // Send Consolidated Report to ED
-        await transporter.sendMail({
-            from: "your-email@gmail.com",
-            to: "ed-email@example.com",
-            subject: "All Department Attendance Report",
-            text: JSON.stringify(departmentAttendance.rows, null, 2),
-        });
-
-        console.log("✅ Reports sent successfully!");
-    } catch (error) {
-        console.error("❌ Error sending reports:", error);
-    }
-});
-
-// Function to Get Department Email (Replace with actual emails)
-const getDepartmentEmail = (department) => {
-    const departmentEmails = {
-        "CSE": "kesavan.scemdu@gmail.com",
-        "ECE": "ece-dept@example.com",
-        "MECH": "mech-dept@example.com",
-    };
-    return departmentEmails[department] || null;
-};
 
 
 
