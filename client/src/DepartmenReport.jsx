@@ -19,185 +19,314 @@ const DepartmentReport = () => {
   const departments = ["CSE", "ECE", "EEE", "MECH", "CIVIL", "AI&DS"];
   const batches = ["2021-2025", "2022-2026", "2023-2027", "2024-2028", "2025-2029"];
 
+  // Add date validation
+  const today = new Date().toISOString().split("T")[0];
+
+  const handleStartDateChange = (e) => {
+    const selectedDate = e.target.value;
+    if (selectedDate > today) {
+      toast.warn("Start date cannot be in the future!", { position: "top-right" });
+      return;
+    }
+    setStartDate(selectedDate);
+  };
+
+  const handleEndDateChange = (e) => {
+    const selectedDate = e.target.value;
+    if (selectedDate > today) {
+      toast.warn("End date cannot be in the future!", { position: "top-right" });
+      return;
+    }
+    if (startDate && selectedDate < startDate) {
+      toast.warn("End date cannot be before start date!", { position: "top-right" });
+      return;
+    }
+    setEndDate(selectedDate);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-  
+    setReportData([]);
+
+    // Frontend validation
     if (!selectedDept || !selectedBatch || !startDate || !endDate) {
-      toast.warn("⚠️ Please fill in all fields.", { position: "top-right", autoClose: 3000 });
+      toast.warn("⚠️ Please fill in all fields.", { position: "top-right" });
       return;
     }
-  
-    // Convert dates to UTC before sending
-    const startUtc = new Date(startDate).toISOString().split("T")[0]; // YYYY-MM-DD format
-    const endUtc = new Date(endDate).toISOString().split("T")[0];
-  
+
+    if (new Date(startDate) > new Date(endDate)) {
+      toast.warn("⚠️ Start date cannot be after end date!", { position: "top-right" });
+      return;
+    }
+
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/attendance/department-report?department=${selectedDept}&batch=${selectedBatch}&startDate=${startUtc}&endDate=${endUtc}`,
+        `${import.meta.env.VITE_API_BASE_URL}/api/attendance/department-report?department=${selectedDept}&batch=${selectedBatch}&startDate=${startDate}&endDate=${endDate}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-  
+
       const data = await response.json();
-  
+
       if (response.ok) {
         if (data.length === 0) {
-          toast.info(`❌ No records found for ${selectedDept} (${selectedBatch}) from ${startUtc} to ${endUtc}.`, { position: "top-right", autoClose: 3000 });
-          setReportData([]);
+          toast.info("ℹ️ No records found for the selected criteria.", { position: "top-right" });
         } else {
           setReportData(data);
-          toast.success(`✅ Report generated successfully!`, { position: "top-right", autoClose: 3000 });
+          toast.success("✅ Report generated successfully!", { position: "top-right" });
         }
       } else {
-        toast.error(data.error || "❌ Failed to fetch data.", { position: "top-right", autoClose: 3000 });
+        throw new Error(data.error || "Failed to fetch data");
       }
-    } catch {
-      toast.error("⚠️ Network error: Unable to connect to server.", { position: "top-right", autoClose: 3000 });
+    } catch (err) {
+      setError(err.message);
+      toast.error(`❌ ${err.message}`, { position: "top-right" });
     }
   };
-     
-  
 
+  // Update the time conversion in export functions
+  const formatDateTime = (dateString) => {
+    const date = new Date(dateString);
+    return {
+      date: date.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric"
+      }),
+      time: date.toLocaleTimeString("en-IN", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true
+      })
+    };
+  };
+
+  // Add these export functions above the return statement
   const exportToPDF = () => {
-    if (reportData.length === 0) {
-      toast.warn("⚠️ No data to export!", { position: "top-right" });
-      return;
-    }
-  
     const doc = new jsPDF();
-    doc.text("Department Wise Report", 10, 10);
-    doc.text(`Total Students: ${reportData.length}`, 10, 20);
-    doc.text(`Date Range: ${startDate} to ${endDate}`, 10, 30);
-  
-    const tableColumn = ["Roll No", "Name", "Department", "Date", "Time", "Status"];
-    const tableRows = reportData.map((row) => {
-      const istDate = new Date(row.ist_date); // Ensure it's a Date object
-      return [
-        row.roll_no,
-        row.name,
-        row.department,
-        istDate.toLocaleDateString("en-GB"), // Corrected date format
-        istDate.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true }), // Corrected time format
-        row.status,
-      ];
+    const title = "Department Attendance Report";
+    const headers = [["Roll No", "Name", "Department", "Date", "Time", "Status"]];
+    const data = reportData.map(record => {
+      const { date, time } = formatDateTime(record.ist_date);
+      return [record.roll_no, record.name, record.department, date, time, record.status];
     });
-    
   
-    autoTable(doc, { head: [tableColumn], body: tableRows, startY: 40 });
-    doc.save("department_report.pdf");
-  
-    toast.success("✅ PDF exported successfully!", { position: "top-right" });
+    doc.text(title, 14, 15);
+    autoTable(doc, {
+      head: headers,
+      body: data,
+      startY: 25,
+      theme: 'grid',
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [79, 70, 229] } // Indigo color
+    });
+    doc.save(`department-report-${Date.now()}.pdf`);
   };
   
-  
-
   const exportToExcel = () => {
-    if (reportData.length === 0) {
-      toast.warn("⚠️ No data to export!", { position: "top-right" });
-      return;
-    }
-  
-    const formattedData = reportData.map((row) => ({
-      "Roll No": row.roll_no,
-      Name: row.name,
-      Department: row.department,
-      "Date": new Date(row.ist_date).toLocaleDateString("en-GB"),
-      "Time": new Date(row.ist_date).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true }),
-      Status: row.status,
+    const worksheet = XLSX.utils.json_to_sheet(reportData.map(record => {
+      const { date, time } = formatDateTime(record.ist_date);
+      return {
+        "Roll No": record.roll_no,
+        "Name": record.name,
+        "Department": record.department,
+        "Date": date,
+        "Time": time,
+        "Status": record.status
+      };
     }));
-  
-    const ws = XLSX.utils.json_to_sheet([
-      { A: `Total Students: ${reportData.length}` },
-      { A: `Date Range: ${startDate} to ${endDate}` },
-      {},
-      ...formattedData
-    ], { skipHeader: true });
-  
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Report");
-  
-    XLSX.writeFile(wb, "department_report.xlsx");
-    toast.success("✅ Excel file exported successfully!", { position: "top-right" });
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Report");
+    XLSX.writeFile(workbook, `department-report-${Date.now()}.xlsx`);
   };
   
-  
-
+  // In the JSX return statement, update the export buttons section to:
+  {reportData.length > 0 && (
+    <div className="flex gap-3">
+      <button
+        onClick={exportToPDF}
+        className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+      >
+        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+        </svg>
+        Export PDF
+      </button>
+      <button
+        onClick={exportToExcel}
+        className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+      >
+        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        Export Excel
+      </button>
+    </div>
+  )}
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
-      <ToastContainer />
-
-      <div className="flex-1 ml-1 relative">
-        <div className="bg-[#C3DBE8] min-h-[590px] p-0 w-[1125px] mt-1 rounded-lg">
-          <h1 className="text-2xl font-bold text-gray-800 text-center mt-4 mb-8">Department Wise Report</h1>
-
-          {error && (
-            <div className="absolute top-4 right-4 bg-red-100 text-red-800 p-3 rounded-md shadow-md border-l-4 border-red-500">
-              {error}
+      <div className="flex-1 p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-white rounded-2xl shadow-lg p-6">
+            <div className="flex items-center justify-between mb-8">
+              <h1 className="text-2xl font-bold text-indigo-900">Department Analytics</h1>
+              {reportData.length > 0 && (
+                <div className="flex gap-3">
+                  <button
+                    onClick={exportToPDF}
+                    className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+                  >
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Export PDF
+                  </button>
+                  <button
+                    onClick={exportToExcel}
+                    className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                  >
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Export Excel
+                  </button>
+                </div>
+              )}
             </div>
-          )}
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="p-6 rounded-lg max-w-2xl mx-auto">
-            <div className="mb-4">
-              <label className="block text-blue-600 font-medium mb-2">Select Department:</label>
-              <select className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" value={selectedDept} onChange={(e) => setSelectedDept(e.target.value)}>
-                <option value="">-- Select --</option>
-                {departments.map((dept) => (
-                  <option key={dept} value={dept}>{dept}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Date Range Section */}
-            <div className="grid grid-cols-2 gap-4 mb-4">
+            <form onSubmit={handleSubmit} className="grid md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8 items-end">
+              {/* Department Dropdown */}
               <div>
-                <label className="block text-blue-600 font-medium mb-2">From Date:</label>
-                <input type="date" className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                <label className="block text-sm font-medium text-indigo-900 mb-1">Department</label>
+                <select
+                  value={selectedDept}
+                  onChange={(e) => setSelectedDept(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 rounded-lg border border-indigo-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                >
+                  <option value="">Select Department</option>
+                  {departments.map((dept) => (
+                    <option key={dept} value={dept}>{dept}</option>
+                  ))}
+                </select>
               </div>
+
+              {/* Batch Dropdown */}
               <div>
-                <label className="block text-blue-600 font-medium mb-2">To Date:</label>
-                <input type="date" className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                <label className="block text-sm font-medium text-indigo-900 mb-1">Batch</label>
+                <select
+                  value={selectedBatch}
+                  onChange={(e) => setSelectedBatch(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 rounded-lg border border-indigo-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                >
+                  <option value="">Select Batch</option>
+                  {batches.map((batch) => (
+                    <option key={batch} value={batch}>{batch}</option>
+                  ))}
+                </select>
               </div>
-            </div>
 
-          
-            {/* Batch Selection */}
-            <div className="mb-4">
-              <label className="block text-blue-600 font-medium mb-2">Select Batch:</label>
-              <select className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" value={selectedBatch} onChange={(e) => setSelectedBatch(e.target.value)}>
-                <option value="">-- Select --</option>
-                {batches.map((batch) => (
-                  <option key={batch} value={batch}>{batch}</option>
-                ))}
-              </select>
-            </div>
+              {/* Start Date */}
+              <div>
+                <label className="block text-sm font-medium text-indigo-900 mb-1">From Date</label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={handleStartDateChange}
+                  max={today}
+                  required
+                  className="w-full px-3 py-2 rounded-lg border border-indigo-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+              </div>
 
-            <button type="submit" className="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 transition">Generate Report</button>
+              {/* End Date */}
+              <div>
+                <label className="block text-sm font-medium text-indigo-900 mb-1">To Date</label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={handleEndDateChange}
+                  min={startDate} // Prevent selecting end date before start date
+                  max={today}
+                  required
+                  className="w-full px-3 py-2 rounded-lg border border-indigo-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+              </div>
 
-            {/* Success Message */}
-             {reportData.length > 0 && (
-               <p className="text-green-600 text-lg font-semibold text-center mt-4">
-                 Report generated successfully for {selectedDept} ({selectedBatch}) from {startDate} to {endDate}.
-               <span>You can download the report as PDF or Excel below.</span>
-               </p>
-               
-             )}
+              {/* Submit Button */}
+              <button
+                type="submit"
+                className="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition duration-200 flex items-center justify-center space-x-2 group"
+              >
+                <span>Generate</span>
+                <svg className="w-5 h-5 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                </svg>
+              </button>
+            </form>
 
-          </form>
-
-          <div className="absolute bottom-6 right-6 flex gap-4">
-            <button onClick={exportToPDF} className="bg-gray-800 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition">Export PDF</button>
-            <button onClick={exportToExcel} className="bg-gray-800 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition">Export Excel</button>
+            {reportData.length > 0 && (
+              <div className="mt-8">
+                <div className="overflow-x-auto rounded-lg border border-gray-200">
+                  <table className="w-full min-w-max">
+                    <thead className="bg-indigo-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-indigo-900 uppercase tracking-wider">Roll No</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-indigo-900 uppercase tracking-wider">Name</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-indigo-900 uppercase tracking-wider">Department</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-indigo-900 uppercase tracking-wider">Date</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-indigo-900 uppercase tracking-wider">Time</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-indigo-900 uppercase tracking-wider">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {reportData.map((record, index) => {
+                        const { date, time } = formatDateTime(record.ist_date);
+                        return (
+                          <tr key={index} className="hover:bg-gray-50">
+                            <td className="px-6 py-4">{record.roll_no}</td>
+                            <td className="px-6 py-4">{record.name}</td>
+                            <td className="px-6 py-4">{record.department}</td>
+                            <td className="px-6 py-4">{date}</td>
+                            <td className="px-6 py-4">{time}</td>
+                            <td className="px-6 py-4">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                record.status === 'Late' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
+                              }`}>
+                                {record.status}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+            {/* Display message if no data and no error */}
+            {reportData.length === 0 && !error && (
+              <div className="mt-8 text-center text-gray-500">
+                <p>Select criteria and click 'Generate' to view the report.</p>
+              </div>
+            )}
+            {/* Display error message */}
+            {error && (
+              <div className="mt-8 text-center text-red-600 bg-red-50 p-4 rounded-lg">
+                <p>Error: {error}</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
+      <ToastContainer limit={1} />
     </div>
   );
 };
-
 
 export default DepartmentReport;
