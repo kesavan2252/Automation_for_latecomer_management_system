@@ -97,24 +97,28 @@ export const addStudent = async (req, res) => {
 // ✅ Get Student by Roll Number
 export const getStudentByRollNo = async (req, res) => {
     const { rollNo } = req.params;
-    console.log("🔍 Searching for Roll No:", rollNo); // Debugging
-  
-    try {
-        const result = await pool.query("SELECT * FROM students WHERE roll_no ILIKE $1", [rollNo]); // Ensure column name is correct
-  
-      console.log("📝 Query Result:", result.rows); // Debugging
-      if (result.rows.length === 0) {
-        console.log("❌ Student not found in DB.");
-        return res.status(404).json({ message: "Student not found." });
-      }
-  
-      console.log("✅ Student Found:", result.rows[0]);
-      res.status(200).json(result.rows[0]);
-    } catch (error) {
-      console.error("❌ Database Query Error:", error);
-      res.status(500).json({ message: "Server error. Please try again later." });
+    console.log("🔍 Searching for Roll No:", rollNo);
+
+    // Update validation for 12-digit roll number
+    if (!/^\d{12}$/i.test(rollNo)) {
+        return res.status(400).json({ message: "Invalid roll number format. Must be 12 digits." });
     }
-  };
+
+    try {
+        const result = await pool.query("SELECT * FROM students WHERE roll_no = $1", [rollNo]);
+        
+        if (result.rows.length === 0) {
+            console.log("❌ Student not found in DB.");
+            return res.status(404).json({ message: "Student not found." });
+        }
+
+        console.log("✅ Student Found:", result.rows[0]);
+        res.status(200).json(result.rows[0]);
+    } catch (error) {
+        console.error("❌ Database Query Error:", error);
+        res.status(500).json({ message: "Server error. Please try again later." });
+    }
+};
 
 // ✅ Update Student Details
 export const updateStudent = async (req, res) => {

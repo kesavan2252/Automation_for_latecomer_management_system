@@ -1,227 +1,227 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Sidebar from "./components/Sidebar";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
-const EditStudent = () => {
+const EditStudents = () => {
   const [rollNo, setRollNo] = useState("");
   const [student, setStudent] = useState(null);
-  const [isUpdated, setIsUpdated] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [rollNoError, setRollNoError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
-  // Function to handle search
+  // Validate roll number format
+  // Update the validation function
+  const validateRollNo = (number) => /^\d{12}$/i.test(number);
+  
+  // Update the input field
+  <input
+      type="text"
+      value={rollNo}
+      onChange={(e) => {
+          const value = e.target.value.replace(/\D/g, ''); // Only allow digits
+          if (value.length <= 12) setRollNo(value);
+      }}
+      placeholder="Enter 12-digit Roll Number"
+      maxLength={12}
+      className="w-full px-6 py-4 rounded-xl border-2 border-indigo-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
+  />
+
   const handleSearch = async () => {
     if (!rollNo.trim()) {
-      setRollNoError("⚠️ Please enter a Roll Number.");
+      toast.warn("Please enter a Roll Number", { position: "top-right" });
+      return;
+    }
+    
+    if (!validateRollNo(rollNo)) {
+      toast.error("Invalid Roll Number format (e.g: 21IT045)", { position: "top-right" });
       return;
     }
 
-    setRollNoError("");
-    setErrorMessage("");
-
+    setIsLoading(true);
     try {
-      console.log("🔍 Searching for Roll No:", rollNo);
-
-      // Retrieve token from localStorage
       const token = localStorage.getItem("token");
-      if (!token) {
-        setErrorMessage("⚠️ Unauthorized access. Please login again.");
-        return;
-      }
-
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/students/${rollNo}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/students/${rollNo.toUpperCase()}`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (response.status === 401) {
-        setErrorMessage("⚠️ Unauthorized. Please login again.");
-        return;
-      }
-
-      if (response.status === 404) {
-        console.log("❌ Student not found!");
-        setErrorMessage("⚠️ Student not found in any batch.");
-        setStudent(null);
-        return;
-      }
-
       if (!response.ok) {
-        throw new Error("Something went wrong. Please try again later.");
+        const error = await response.json();
+        throw new Error(error.message || "Student not found");
       }
 
       const data = await response.json();
-      console.log("✅ Student Data:", data);
       setStudent(data);
+      toast.success("Student record found!", { position: "top-right" });
     } catch (error) {
-      console.error("❌ Error fetching student:", error);
-      setErrorMessage(error.message);
+      toast.error(error.message, { position: "top-right" });
+      setStudent(null);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Function to handle update with validation
   const handleUpdate = async () => {
-    if (!student.name || !student.department || !student.batch) {
-      setErrorMessage("⚠️ All fields must be filled out before updating.");
+    if (!student?.name || !student.department || !student.batch) {
+      toast.warn("All fields are required", { position: "top-right" });
       return;
     }
 
-    setErrorMessage("");
-
+    setIsUpdating(true);
     try {
-      console.log("Updating Student with Roll No:", student.roll_no);
-
-      // Retrieve token from localStorage
       const token = localStorage.getItem("token");
-      if (!token) {
-        setErrorMessage("⚠️ Unauthorized access. Please login again.");
-        return;
-      }
-
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/students/${student.roll_no}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          name: student.name,
-          department: student.department,
-          batch: student.batch,
-        }),
+        body: JSON.stringify(student),
       });
 
-      if (response.status === 401) {
-        setErrorMessage("⚠️ Unauthorized. Please login again.");
-        return;
-      }
-
-      if (!response.ok) {
-        throw new Error("❌ Failed to update student.");
-      }
-
-      setIsUpdated(true);
-      setTimeout(() => setIsUpdated(false), 2000);
+      if (!response.ok) throw new Error("Update failed");
+      
+      toast.success("Student updated successfully!", { position: "top-right" });
+      setTimeout(() => setStudent(null), 1500);
     } catch (error) {
-      setErrorMessage(error.message);
+      toast.error(error.message, { position: "top-right" });
+    } finally {
+      setIsUpdating(false);
     }
   };
 
   return (
-    <div className="flex bg-gray-200 min-h-screen">
+    <div className="flex min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
       <Sidebar />
+      <div className="flex-1 p-8 ml-1">
+        <div className="max-w-4xl mx-auto animate-fadeIn">
+          <h1 className="text-3xl font-bold text-indigo-900 mb-8 flex items-center gap-3">
+            <svg className="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+            </svg>
+            Student Record Editor
+          </h1>
 
-      {/* Main Content */}
-      <div className="bg-[#C3DBE8] min-h-[565px] w-[1110px] rounded-lg mt-1 ml-1 p-3">
-        <div className="flex-1 p-8 rounded-lg ml-40 mr-50 ">
-          <h1 className="text-2xl font-bold mb-4">Edit Student Details</h1>
-
-          {/* Search Section */}
           {!student ? (
-            <div>
-              <label className="block text-lg font-medium">Enter Roll No:</label>
-              <input
-                type="text"
-                className="w-full p-2 border rounded-md mt-2"
-                value={rollNo}
-                onChange={(e) => setRollNo(e.target.value)}
-              />
-              {rollNoError && <p className="text-red-500 mt-2">{rollNoError}</p>}
+            <div className="bg-white rounded-2xl shadow-xl p-8 backdrop-blur-sm border border-indigo-100">
+              <div className="space-y-6">
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={rollNo}
+                    onChange={(e) => setRollNo(e.target.value.toUpperCase())}
+                    placeholder="Enter Roll Number "
+                    
+                    className="w-full px-6 py-4 rounded-xl border-2 border-indigo-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
+                  />
+                  <svg className="absolute right-4 top-4 w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                  </svg>
+                </div>
 
-              <button
-                onClick={handleSearch}
-                className="bg-red-400 text-white px-6 py-2 rounded-md mt-4"
-              >
-                View
-              </button>
+                <button
+                  onClick={handleSearch}
+                  disabled={isLoading}
+                  className="w-full bg-indigo-600 text-white py-4 rounded-xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
+                >
+                  {isLoading ? (
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                  ) : (
+                    <>
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 21h7a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v11m0 5l4.879-4.879m0 0a3 3 0 104.243-4.26 3 3 0 00-4.243 4.26z"/>
+                      </svg>
+                      Search Student
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           ) : (
-            <div>
-              {/* Back Button */}
-              <button
-                onClick={() => {
-                  setStudent(null);
-                  setRollNo("");
-                }}
-                className="bg-gray-500 text-white px-4 py-2 rounded-md mb-4"
-              >
-                ← Back
-              </button>
-
-              {/* Roll No (Non-Editable) */}
-              <label className="block font-medium">Roll No:</label>
-              <input
-                type="text"
-                className="w-full p-2 border text-gray rounded-md bg-gray-200"
-                value={student.roll_no}
-                readOnly
-              />
-
-              {/* Name (Editable) */}
-              <label className="block mt-4 font-medium">Name:</label>
-              <input
-                type="text"
-                className="w-full p-2 border rounded-md"
-                value={student.name}
-                onChange={(e) => setStudent({ ...student, name: e.target.value })}
-              />
-
-              {/* Department (Editable) */}
-              <label className="block mt-4 font-medium">Department:</label>
-                  <select
-                    className="w-full p-2 border rounded-md"
-                    value={student.department}
-                    onChange={(e) => setStudent({ ...student, department: e.target.value })}
+            <div className="bg-white rounded-2xl shadow-xl p-8 backdrop-blur-sm border border-indigo-100 animate-slideUp">
+              <div className="space-y-8">
+                <div className="flex justify-between items-center">
+                  <button
+                    onClick={() => setStudent(null)}
+                    className="text-indigo-600 hover:text-indigo-800 flex items-center gap-2 transition-colors"
                   >
-                    <option value="">Select Department</option>
-                    <option value="CSE">CSE</option>
-                    <option value="ECE">ECE</option>
-                    <option value="EEE">EEE</option>
-                    <option value="MECH">MECH</option>
-                    <option value="CIVIL">CIVIL</option>
-                    <option value="AIDS">AIDS</option>
-                  </select>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                    </svg>
+                    Back to Search
+                  </button>
+                  <span className="bg-indigo-100 text-indigo-800 px-4 py-2 rounded-full text-sm font-medium">
+                    Editing: {student.roll_no}
+                  </span>
+                </div>
 
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-indigo-900 mb-2">Full Name</label>
+                    <input
+                      type="text"
+                      value={student.name}
+                      onChange={(e) => setStudent({...student, name: e.target.value})}
+                      className="w-full px-4 py-3 rounded-lg border-2 border-indigo-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                    />
+                  </div>
 
-              {/* Batch Selection */}
-              <label className="block mt-4 font-medium">Select Batch:</label>
-              <select
-                className="w-full p-2 border rounded-md"
-                value={student.batch}
-                onChange={(e) => setStudent({ ...student, batch: e.target.value })}
-              >
-                <option value="2021-2025">2021-2025</option>
-                <option value="2022-2026">2022-2026</option>
-                <option value="2023-2027">2023-2027</option>
-                <option value="2024-2028">2024-2028</option>
-                <option value="2025-2029">2025-2029</option>
-              </select>
+                  <div>
+                    <label className="block text-sm font-medium text-indigo-900 mb-2">Department</label>
+                    <select
+                      value={student.department}
+                      onChange={(e) => setStudent({...student, department: e.target.value})}
+                      className="w-full px-4 py-3 rounded-lg border-2 border-indigo-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                    >
+                      <option value="CSE">Computer Science</option>
+                      <option value="ECE">Electronics & Communication</option>
+                      <option value="EEE">Electrical Engineering</option>
+                      <option value="MECH">Mechanical</option>
+                      <option value="CIVIL">Civil</option>
+                      <option value="AIDS">AI & Data Science</option>
+                    </select>
+                  </div>
 
-              {errorMessage && <p className="text-red-500 mt-2">{errorMessage}</p>}
+                  <div>
+                    <label className="block text-sm font-medium text-indigo-900 mb-2">Academic Batch</label>
+                    <select
+                      value={student.batch}
+                      onChange={(e) => setStudent({...student, batch: e.target.value})}
+                      className="w-full px-4 py-3 rounded-lg border-2 border-indigo-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                    >
+                      {Array.from({length: 5}, (_, i) => 2021 + i).map(year => (
+                        <option key={year} value={`${year}-${year + 4}`}>
+                          {year} - {year + 4}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
 
-              {/* Update Button */}
-              <button
-                onClick={handleUpdate}
-                className="bg-red-400 text-white px-6 py-2 rounded-md mt-6"
-              >
-                Change
-              </button>
+                <button
+                  onClick={handleUpdate}
+                  disabled={isUpdating}
+                  className="w-full bg-indigo-600 text-white py-4 rounded-xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
+                >
+                  {isUpdating ? (
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                  ) : (
+                    <>
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                      </svg>
+                      Update Student Record
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           )}
-
-          {isUpdated && (
-            <div className="fixed top-10 right-3 transform -translate-x-1/2 bg-green-500 text-white px-6 py-2 rounded-md">
-              Updated Successfully!
-            </div>
-          )}
-
-          {errorMessage && <p className="text-red-500 bg-yellow-100 p-2 mt-2 rounded">{errorMessage}</p>}
         </div>
       </div>
+      <ToastContainer limit={3} />
     </div>
   );
 };
 
-export default EditStudent;
+export default EditStudents;
