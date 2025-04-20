@@ -2,8 +2,9 @@ import pool from "../config/db.js";
 import cron from "node-cron";
 import nodemailer from "nodemailer";
 // Update the Chart.js import
-import { Chart } from 'chart.js/auto';
-import { ChartJSNodeCanvas } from 'chartjs-node-canvas';
+// Remove these imports
+// import { Chart } from 'chart.js/auto';
+// import { ChartJSNodeCanvas } from 'chartjs-node-canvas';
 
 // @desc Get latecomer count per department
 // @route GET /api/attendance/department-count
@@ -397,44 +398,14 @@ const departmentEmails = {
     "PRINCIPAL": "suryakesavan6@gmail.com"
 };
 
-// Initialize chart generation
-const chartJSNodeCanvas = new ChartJSNodeCanvas({ width: 800, height: 400 });
+// Remove chart initialization
+// const chartJSNodeCanvas = new ChartJSNodeCanvas({ width: 800, height: 400 });
 
-// Schedule daily reports at 11:50 AM
-cron.schedule('50 11 * * *', async () => {
-    await sendDailyReports();
-});
-
-// Schedule weekly reports every Sunday at 11:50 AM
-cron.schedule('50 11 * * 0', async () => {
-    await sendWeeklyReports();
-});
-
-// Schedule monthly reports on 1st of every month at 11:50 AM
-cron.schedule('50 11 1 * *', async () => {
-    await sendMonthlyReports();
-});
-
-async function generateAttendanceChart(data) {
-    const config = {
-        type: 'bar',
-        data: {
-            labels: Object.keys(data),
-            datasets: [{
-                label: 'Late Comers',
-                data: Object.values(data),
-                backgroundColor: 'rgba(255, 99, 132, 0.5)'
-            }]
-        }
-    };
-    return await chartJSNodeCanvas.renderToBuffer(config);
-}
-
+// Modify sendDailyReports function
 async function sendDailyReports() {
     try {
         const today = new Date().toISOString().split('T')[0];
         
-        // Get department-wise attendance
         const deptStats = await pool.query(`
             SELECT 
                 department,
@@ -445,7 +416,7 @@ async function sendDailyReports() {
             GROUP BY department
         `);
 
-        // Send to HODs
+        // Send to HODs without charts
         for (const dept of Object.keys(departmentEmails)) {
             if (dept === 'PRINCIPAL') continue;
             const deptData = deptStats.rows.find(r => r.department === dept) || { late_count: 0, total_count: 0 };
@@ -458,7 +429,7 @@ async function sendDailyReports() {
             });
         }
 
-        // Send consolidated report to Principal
+        // Send to Principal without charts
         await transporter.sendMail({
             from: process.env.EMAIL_USER,
             to: departmentEmails.PRINCIPAL,
@@ -470,45 +441,8 @@ async function sendDailyReports() {
         console.error('Error sending daily reports:', error);
     }
 }
-        // Generate chart
-        const chartBuffer = await generateAttendanceChart(
-            Object.fromEntries(deptStats.rows.map(r => [r.department, r.late_count]))
-        );
 
-        // Send to HODs
-        for (const dept of Object.keys(departmentEmails)) {
-            if (dept === 'PRINCIPAL') continue;
-            const deptData = deptStats.rows.find(r => r.department === dept) || { late_count: 0, total_count: 0 };
-            
-            await transporter.sendMail({
-                from: process.env.EMAIL_USER,
-                to: departmentEmails[dept],
-                subject: `Daily Attendance Report - ${dept} (${today})`,
-                html: generateDailyEmailTemplate(dept, deptData),
-                attachments: [{
-                    filename: 'attendance-chart.png',
-                    content: chartBuffer
-                }]
-            });
-        }
-
-        // Send consolidated report to Principal
-        await transporter.sendMail({
-            from: process.env.EMAIL_USER,
-            to: departmentEmails.PRINCIPAL,
-            subject: `Daily Attendance Summary - All Departments (${today})`,
-            html: generatePrincipalDailyTemplate(deptStats.rows),
-            attachments: [{
-                filename: 'attendance-chart.png',
-                content: chartBuffer
-            }]
-        });
-
-    } catch (error) {
-        console.error('Error sending daily reports:', error);
-    }
-}
-
+// Similarly modify sendWeeklyReports and sendMonthlyReports to remove chart generation
 async function sendWeeklyReports() {
     try {
         const endDate = new Date();
