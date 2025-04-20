@@ -445,6 +445,7 @@ async function sendDailyReports() {
             GROUP BY department
         `);
 
+        // Send to HODs
         for (const dept of Object.keys(departmentEmails)) {
             if (dept === 'PRINCIPAL') continue;
             const deptData = deptStats.rows.find(r => r.department === dept) || { late_count: 0, total_count: 0 };
@@ -457,8 +458,7 @@ async function sendDailyReports() {
             });
         }
 
-
-
+        // Send consolidated report to Principal
         await transporter.sendMail({
             from: process.env.EMAIL_USER,
             to: departmentEmails.PRINCIPAL,
