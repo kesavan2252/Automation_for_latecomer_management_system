@@ -194,7 +194,7 @@ const ScannerPage = () => {
         <div className="min-h-screen bg-gradient-to-br from-teal-600 via-cyan-700 to-amber-900 animate-gradient-x">
             {/* Notification styling */}
             {notification.message && (
-                <div className={`fixed top-5 right-5 px-4 py-2 rounded-lg shadow-xl text-white font-semibold
+                <div className={`fixed top-25 right-5 px-4 py-2 rounded-lg shadow-xl text-white font-semibold
                     transform transition-all duration-300 ${notification.message ? 'translate-x-0' : 'translate-x-[150%]'}
                     ${notification.type === "success" ? "bg-gradient-to-r from-emerald-400 to-teal-500" 
                     : notification.type === "error" ? "bg-gradient-to-r from-rose-400 to-pink-500" 
