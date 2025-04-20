@@ -392,9 +392,9 @@ const transporter = nodemailer.createTransport({
 // Department HOD emails
 const departmentEmails = {
     "CSE": "suryakesavan6@gmail.com",
-    "ECE": "hod.ece@example.com",
-    "MECH": "hod.mech@example.com",
-    "PRINCIPAL": "principal@example.com"
+    "ECE": "suryakesavan6@gmail.com",
+    "MECH": "suryakesavan6@gmail.com",
+    "PRINCIPAL": "suryakesavan6@gmail.com"
 };
 
 // Initialize chart generation
@@ -734,17 +734,94 @@ function generateMonthlyEmailTemplate(dept, stats) {
 }
 
 // Add this at the bottom of your exports
+// Update the testEmailReports function
 export const testEmailReports = async (req, res) => {
     try {
-        console.log("🧪 Testing email reports...");
+        console.log("🧪 Testing all email reports...");
         
-        // Test daily report
-        await sendDailyReports();
+        // Test all reports
+        await Promise.all([
+            sendDailyReports(),
+            sendWeeklyReports(),
+            sendMonthlyReports()
+        ]);
         
-        res.json({ message: "Email test triggered successfully" });
+        console.log("✅ All email reports sent successfully");
+        res.json({ 
+            success: true,
+            message: "All email reports (daily, weekly, monthly) triggered successfully" 
+        });
     } catch (error) {
         console.error("❌ Email test failed:", error);
-        res.status(500).json({ error: "Email test failed" });
+        res.status(500).json({ 
+            success: false,
+            error: "Email test failed",
+            details: error.message 
+        });
     }
 };
+
+// Add missing email template functions
+function generatePrincipalWeeklyTemplate(stats) {
+    return `
+        <h2>Weekly Attendance Summary - All Departments</h2>
+        <table border="1">
+            <tr>
+                <th>Department</th>
+                <th>Total Students</th>
+                <th>Late Arrivals</th>
+                <th>Percentage</th>
+            </tr>
+            ${stats.map(dept => `
+                <tr>
+                    <td>${dept.department}</td>
+                    <td>${dept.total_count}</td>
+                    <td>${dept.late_count}</td>
+                    <td>${((dept.late_count / dept.total_count) * 100).toFixed(2)}%</td>
+                </tr>
+            `).join('')}
+        </table>
+        <p>Weekly Trend Analysis Attached</p>
+    `;
+}
+
+function generatePrincipalMonthlyTemplate(stats) {
+    return `
+        <h2>Monthly Attendance Analysis - All Departments</h2>
+        <table border="1">
+            <tr>
+                <th>Department</th>
+                <th>Week</th>
+                <th>Total</th>
+                <th>Late</th>
+                <th>Mon-Fri Distribution</th>
+            </tr>
+            ${stats.map(week => `
+                <tr>
+                    <td>${week.department}</td>
+                    <td>Week ${week.week_number}</td>
+                    <td>${week.total_count}</td>
+                    <td>${week.late_count}</td>
+                    <td>
+                        M:${week.monday_count} | 
+                        T:${week.tuesday_count} | 
+                        W:${week.wednesday_count} | 
+                        T:${week.thursday_count} | 
+                        F:${week.friday_count}
+                    </td>
+                </tr>
+            `).join('')}
+        </table>
+        <p>Monthly Analysis Chart Attached</p>
+    `;
+}
+
+function generateDailyEmailTemplate(dept, stats) {
+    return `
+        <h2>${dept} Department - Daily Attendance Report</h2>
+        <p>Total Students: ${stats.total_count}</p>
+        <p>Late Arrivals: ${stats.late_count}</p>
+        <p>Percentage: ${((stats.late_count / stats.total_count) * 100).toFixed(2)}%</p>
+    `;
+}
 
