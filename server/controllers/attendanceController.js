@@ -445,6 +445,31 @@ async function sendDailyReports() {
             GROUP BY department
         `);
 
+        for (const dept of Object.keys(departmentEmails)) {
+            if (dept === 'PRINCIPAL') continue;
+            const deptData = deptStats.rows.find(r => r.department === dept) || { late_count: 0, total_count: 0 };
+            
+            await transporter.sendMail({
+                from: process.env.EMAIL_USER,
+                to: departmentEmails[dept],
+                subject: `Daily Attendance Report - ${dept} (${today})`,
+                html: generateDailyEmailTemplate(dept, deptData)
+            });
+        }
+
+
+
+        await transporter.sendMail({
+            from: process.env.EMAIL_USER,
+            to: departmentEmails.PRINCIPAL,
+            subject: `Daily Attendance Summary - All Departments (${today})`,
+            html: generatePrincipalDailyTemplate(deptStats.rows)
+        });
+
+    } catch (error) {
+        console.error('Error sending daily reports:', error);
+    }
+}
         // Generate chart
         const chartBuffer = await generateAttendanceChart(
             Object.fromEntries(deptStats.rows.map(r => [r.department, r.late_count]))
