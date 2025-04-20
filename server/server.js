@@ -10,19 +10,26 @@ const app = express();
 dotenv.config();
 
 // CORS configuration
-const corsOptions = {
+app.use(cors({
     origin: [
-        'http://localhost:3000',
-        'http://localhost:5173',
-        'https://automation-for-latecomer-management-system.vercel.app'
+        'https://automation-for-latecomer-management-system.vercel.app',
+        'http://localhost:5173'
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
-};
+}));
 
-app.use(cors(corsOptions));
 app.use(express.json());
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({ 
+        message: "Something went wrong!", 
+        error: err.message 
+    });
+});
 
 // Add a test route
 app.get('/', (req, res) => {
