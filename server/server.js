@@ -1,24 +1,33 @@
 import express from 'express';
-import dotenv from 'dotenv';
 import cors from 'cors';
+import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes.js';
 import attendanceRoutes from "./routes/attendanceRoutes.js";
 import studentRoutes from './routes/studentRoutes.js'; // ✅ Import student routes
 dotenv.config();
 
 const app = express();
+dotenv.config();
 
-// Middleware
-app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
+// CORS configuration
+const corsOptions = {
+    origin: [
+        'http://localhost:3000',
+        'http://localhost:5173',
+        'https://automation-for-latecomer-management-system.vercel.app'
+    ],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true
+};
 
-app.use(
-  cors({
-    origin: "*",
-    credentials: true,
-  })
-);
- 
+app.use(cors(corsOptions));
 app.use(express.json());
+
+// Add a test route
+app.get('/', (req, res) => {
+    res.json({ message: 'Server is running' });
+});
 
 // Routes
 app.use('/api/auth', authRoutes);
