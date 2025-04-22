@@ -6,42 +6,21 @@ const ScannerPage = () => {
     const [scannedData, setScannedData] = useState(null);
     const [manualRollNo, setManualRollNo] = useState("");
     const [notification, setNotification] = useState({ message: "", type: "" });
-    const [hardwareStatus, setHardwareStatus] = useState("Checking...");
     const [currentTime, setCurrentTime] = useState(new Date());
+    const [lastScanTime, setLastScanTime] = useState(null);
     const inputRef = useRef(null);
 
-    // Function to check hardware connection
-    const checkHardware = async () => {
-        if (`serial` in navigator) {
-            try {
-                const ports = await navigator.serial.getPorts();
-                if (ports.length > 0) {
-                    setHardwareStatus("Hardware Active");
-                } else {
-                    setHardwareStatus("Hardware Inactive");
-                }
-            } catch (error) {
-                console.error("Error checking hardware:", error);
-                setHardwareStatus("Hardware Inactive");
-            }
-        } else {
-            setHardwareStatus("Serial API Not Supported");
-        }
-    };
-
     useEffect(() => {
-        checkHardware();
-        const interval = setInterval(() => {
-            checkHardware();
-        }, 5000); // Check every 5 seconds
-        return () => clearInterval(interval);
-    }, []);
-
-    // Update timer every second
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setCurrentTime(new Date());
-        }, 1000);
+        const updateTime = () => {
+            const now = new Date();
+            // Create date directly in IST timezone
+            const istOptions = { timeZone: 'Asia/Kolkata' };
+            const istTime = new Date(now.toLocaleString('en-US', istOptions));
+            setCurrentTime(istTime);
+        };
+        
+        updateTime();
+        const interval = setInterval(updateTime, 1000);
         return () => clearInterval(interval);
     }, []);
 
@@ -60,136 +39,88 @@ const ScannerPage = () => {
         showNotification("Logged out successfully!", "info");
     };
 
-    const [scannerStatus, setScannerStatus] = useState("Waiting for scan...");
-    const [lastScanTime, setLastScanTime] = useState(null);
-
-    // Keep only this single fetchAttendance function
-
-
-    // Single time update effect
-    useEffect(() => {
-        const updateTime = () => {
-            const now = new Date();
-            const istTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
-            setCurrentTime(istTime);
-        };
-        
-        updateTime();
-        const interval = setInterval(updateTime, 1000);
-        return () => clearInterval(interval);
-    }, []);
-
-    // Remove duplicate useEffect for hardware check
-    useEffect(() => {
-        checkHardware();
-        const interval = setInterval(() => {
-            checkHardware();
-        }, 5000);
-        return () => clearInterval(interval);
-    }, []);
-
-    // Keep only one time update effect
-    useEffect(() => {
-        const updateTime = () => {
-            const now = new Date();
-            const istTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
-            setCurrentTime(istTime);
-        };
-        
-        updateTime();
-        const interval = setInterval(updateTime, 1000);
-        return () => clearInterval(interval);
-    }, []);
-
-    // Keep only one keyboard event handler
     useEffect(() => {
         const handleKeyPress = async (event) => {
-            if (event.key === "Enter" && manualRollNo) {
-                await fetchAttendance(manualRollNo);
+            if (event.key === "Enter" && manualRollNo.trim()) {
+                event.preventDefault();
+                if (lastScanTime && (new Date() - lastScanTime) < 2000) {
+                    console.log("Scan too quick, ignoring...");
+                    return;
+                }
+                await fetchAttendance(manualRollNo.trim());
+                setManualRollNo("");
             }
         };
 
         document.addEventListener("keydown", handleKeyPress);
         return () => document.removeEventListener("keydown", handleKeyPress);
-    }, [manualRollNo]);
+    }, [manualRollNo, lastScanTime]);
 
-    // Keep only one fetchAttendance function
     const fetchAttendance = async (rollNo) => {
+        if (!rollNo.trim()) return;
+        
         try {
-            setScannerStatus("Processing scan...");
             const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/attendance/mark-attendance`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ roll_no: rollNo }),
+                headers: { 
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ 
+                    roll_no: rollNo
+                }),
             });
-
+    
             const data = await response.json();
             if (!response.ok) {
-                setScannerStatus("Scan failed");
                 showNotification(data.error || "Failed to mark attendance.", "error");
                 return;
             }
-
+    
             if (data.record) {
-                const istTime = new Date(data.record.date);
-                const formattedTime = istTime.toLocaleString('en-IN', {
+                // Format the received date in IST
+                const recordDate = new Date(data.record.date);
+                const formattedDate = recordDate.toLocaleString('en-IN', {
                     timeZone: 'Asia/Kolkata',
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
                     hour: '2-digit',
                     minute: '2-digit',
-                    second: '2-digit',
                     hour12: true
-                });
+                }).replace(/(\d{2})\/(\d{2})\/(\d{4}),\s+(\d{1,2}):(\d{2})\s+(AM|PM)/, '$1/$2/$3, $4:$5 $6').toLowerCase();
 
                 setScannedData({
                     roll_no: data.record.roll_no,
                     name: data.record.name ? data.record.name.trim() : "N/A",
                     department: data.record.department || "Unknown",
-                    date: formattedTime,
+                    date: formattedDate,
                     status: data.record.status,
                 });
                 setLastScanTime(new Date());
-                setScannerStatus("Scan successful");
             }
-
+    
             showNotification(data.message, "success");
-            checkHardware();
             setManualRollNo("");
             inputRef.current?.focus();
         } catch (error) {
             console.error("Error:", error);
-            setScannerStatus("Scan error");
             showNotification("Server Error. Please try again.", "error");
-        } finally {
-            setTimeout(() => {
-                setScannerStatus("Waiting for scan...");
-            }, 2000);
         }
     };
 
-    // Keep handleManualEntry function
     const handleManualEntry = async () => {
         if (!manualRollNo) {
             showNotification("Please enter a Roll Number!", "warning");
             return;
         }
+        
+        if (lastScanTime && (new Date() - lastScanTime) < 2000) {
+            showNotification("Please wait before scanning again", "warning");
+            return;
+        }
+        
         await fetchAttendance(manualRollNo);
     };
-
-    // Add keyboard event handler for scanner and manual input
-    useEffect(() => {
-        const handleKeyPress = async (event) => {
-            if (event.key === "Enter") {
-                if (manualRollNo) {
-                    await fetchAttendance(manualRollNo);
-                }
-            }
-        };
-
-        document.addEventListener("keydown", handleKeyPress);
-        return () => document.removeEventListener("keydown", handleKeyPress);
-    }, [manualRollNo]);
-
-    // Add this in your return JSX, inside the scanner status div
     return (
         <div className="min-h-screen bg-gradient-to-br from-teal-600 via-cyan-700 to-amber-900 animate-gradient-x">
             {/* Notification styling */}
@@ -240,30 +171,7 @@ const ScannerPage = () => {
             <div className="container mx-auto px-4 py-8">
                 <div className="max-w-2xl mx-auto">
                     <div className="bg-gradient-to-br from-white/95 via-cyan-50/95 to-amber-50/95 backdrop-blur-xl rounded-2xl shadow-2xl p-8 border border-cyan-200/30 hover:border-cyan-300/50 transition-all duration-500">
-                        {/* Scanner Status Section */}
-                        <div className="text-center mb-6">
-                            <div className="relative inline-block">
-                                <div className={`absolute inset-0 rounded-full animate-pulse ${hardwareStatus === "Hardware Active" ? "bg-emerald-400/30" : "bg-rose-400/30"}`}></div>
-                                <div className={`text-xl font-bold mb-2 relative z-10 p-3 rounded-2xl backdrop-blur-sm ${
-                                    hardwareStatus === "Hardware Active" 
-                                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-400/30" 
-                                        : "bg-rose-500/10 text-rose-400 border border-rose-400/30"
-                                }`}>
-                                    {hardwareStatus}
-                                    <div className="absolute -top-3 right-0 animate-float">
-                                        {hardwareStatus === "Hardware Active" ? (
-                                            <svg className="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
-                                            </svg>
-                                        ) : (
-                                            <svg className="w-6 h-6 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/>
-                                            </svg>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+
 
                         {/* Scanner Input Section */}
                         <div className="space-y-6">

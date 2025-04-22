@@ -24,7 +24,7 @@ const ImportBatch = () => {
       const reader = new FileReader();
       reader.onload = (event) => {
         const text = event.target.result;
-        const lines = text.split('\n');
+        const lines = text.split('\n').filter(line => line.trim() !== ''); // Filter empty lines
         if (lines.length > 0) {
           const headers = lines[0].toLowerCase();
           if (!headers.includes('roll_no') || !headers.includes('name') || !headers.includes('department')) {
@@ -194,7 +194,9 @@ const ImportBatch = () => {
                       </div>
                     ))}
                     <p className="text-sm text-blue-600 mt-4">
-                      {filePreview.length > 0 && `Showing ${filePreview.length - 1} of ${file?.size} records`}
+                      {filePreview.length > 0 && `Showing ${filePreview.length - 1} records preview of total ${
+                        file?.text?.split('\n').filter(line => line.trim() !== '').length - 1 || '?'
+                      } records`}
                     </p>
                   </div>
                 ) : (

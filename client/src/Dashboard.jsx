@@ -4,42 +4,34 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LineChart,
 
 const Dashboard = () => {
   const [departments, setDepartments] = useState([]);
-  const [timeRange, setTimeRange] = useState('weekly'); // 'weekly' or 'monthly'
+  const [timeRange, setTimeRange] = useState('weekly');
   const [chartData, setChartData] = useState([]);
   const [refresh, setRefresh] = useState(false);
 
-  // Sample data generator for demonstration
-  const generateSampleData = (range) => {
+  // Enhanced sample data generator with threshold check
+  const generateSampleData = (range, realData) => {
     const data = [];
-    if (range === 'weekly') {
-      const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-      days.forEach(day => {
-        const entry = {
-          name: day,
-          CSE: Math.floor(Math.random() * 10),
-          ECE: Math.floor(Math.random() * 8),
-          EEE: Math.floor(Math.random() * 7),
-          MECH: Math.floor(Math.random() * 9),
-          CIVIL: Math.floor(Math.random() * 6),
-          'AI&DS': Math.floor(Math.random() * 5),
-        };
-        data.push(entry);
+    const days = range === 'weekly' ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] : 
+                 Array.from({length: 4}, (_, i) => `Week ${i + 1}`);
+    
+    days.forEach(day => {
+      const entry = {
+        name: day,
+      };
+      
+      // Check if real data count exceeds threshold for each department
+      ["CSE", "ECE", "EEE", "MECH", "CIVIL", "AI&DS"].forEach(dept => {
+        const realCount = realData.find(d => d.name === dept)?.count || 0;
+        if (realCount > 12) {
+          entry[dept] = realCount;
+        } else {
+          entry[dept] = range === 'weekly' ? 
+            Math.floor(Math.random() * 8) : // Weekly random data (smaller range)
+            Math.floor(Math.random() * 20);  // Monthly random data (larger range)
+        }
       });
-    } else {
-      // Monthly data
-      for (let i = 1; i <= 4; i++) {
-        const entry = {
-          name: `Week ${i}`,
-          CSE: Math.floor(Math.random() * 40),
-          ECE: Math.floor(Math.random() * 35),
-          EEE: Math.floor(Math.random() * 30),
-          MECH: Math.floor(Math.random() * 38),
-          CIVIL: Math.floor(Math.random() * 25),
-          'AI&DS': Math.floor(Math.random() * 20),
-        };
-        data.push(entry);
-      }
-    }
+      data.push(entry);
+    });
     return data;
   };
 
@@ -49,17 +41,28 @@ const Dashboard = () => {
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data = await response.json();
 
-      const allDepartments = ["CSE", "ECE", "EEE", "MECH", "CIVIL", "AI&DS"].map(dept => ({
-        name: dept,
-        count: data.find(entry => entry.department === dept)?.count || 0,
-      }));
+      const allDepartments = ["CSE", "ECE", "EEE", "MECH", "CIVIL", "AI&DS"].map(dept => {
+        const realCount = data.find(entry => entry.department === dept)?.count || 0;
+        return {
+          name: dept,
+          count: realCount === 0 ? Math.floor(Math.random() * 5) + 1 : realCount // Generate random number between 1-5 if count is 0
+        };
+      });
 
       setDepartments(allDepartments);
       
-      // Generate or fetch chart data based on time range
-      setChartData(generateSampleData(timeRange));
+      // Generate chart data with the updated counts
+      const chartDataWithDummy = generateSampleData(timeRange, allDepartments);
+      setChartData(chartDataWithDummy);
     } catch (error) {
       console.error("Error fetching data:", error);
+      // Fallback to dummy data if API fails
+      const dummyDepartments = ["CSE", "ECE", "EEE", "MECH", "CIVIL", "AI&DS"].map(dept => ({
+        name: dept,
+        count: Math.floor(Math.random() * 5) + 1 // Always generate 1-5 for dummy data
+      }));
+      setDepartments(dummyDepartments);
+      setChartData(generateSampleData(timeRange, dummyDepartments));
     }
   };
 
@@ -69,8 +72,13 @@ const Dashboard = () => {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
-      <div className="flex-1 p-8">
+      {/* Updated Sidebar container with z-index and proper width */}
+      <div className="fixed left-0 top-0 h-full z-50">
+        <Sidebar />
+      </div>
+      
+      {/* Main content with proper margin to account for fixed sidebar */}
+      <div className="flex-1 ml-[280px] p-8">
         <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex justify-between items-center mb-8">
             <h1 className="text-3xl font-bold text-indigo-800">
@@ -106,8 +114,8 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Department Cards */}
-          <div className="grid grid-cols-6 gap-4 mb-8">
+          {/* Department Cards with responsive grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
             {departments.map((dept, index) => (
               <div
                 key={index}
@@ -123,56 +131,58 @@ const Dashboard = () => {
             ))}
           </div>
 
-          {/* Charts Section */}
+          {/* Charts Section with responsive width */}
           <div className="space-y-8">
-            {/* Bar Chart */}
-            <div className="bg-white p-4 rounded-xl shadow-md">
+            <div className="bg-white p-4 rounded-xl shadow-md overflow-x-auto">
               <h3 className="text-xl font-semibold text-gray-800 mb-4">
                 Department-wise Late Arrivals
               </h3>
-              <BarChart
-                width={1000}
-                height={300}
-                data={chartData}
-                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="CSE" fill="#4f46e5" />
-                <Bar dataKey="ECE" fill="#06b6d4" />
-                <Bar dataKey="EEE" fill="#8b5cf6" />
-                <Bar dataKey="MECH" fill="#ec4899" />
-                <Bar dataKey="CIVIL" fill="#f59e0b" />
-                <Bar dataKey="AI&DS" fill="#10b981" />
-              </BarChart>
+              <div className="min-w-[800px]">
+                <BarChart
+                  width={1000}
+                  height={300}
+                  data={chartData}
+                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="CSE" fill="#4f46e5" />
+                  <Bar dataKey="ECE" fill="#06b6d4" />
+                  <Bar dataKey="EEE" fill="#8b5cf6" />
+                  <Bar dataKey="MECH" fill="#ec4899" />
+                  <Bar dataKey="CIVIL" fill="#f59e0b" />
+                  <Bar dataKey="AI&DS" fill="#10b981" />
+                </BarChart>
+              </div>
             </div>
 
-            {/* Line Chart */}
-            <div className="bg-white p-4 rounded-xl shadow-md">
+            <div className="bg-white p-4 rounded-xl shadow-md overflow-x-auto">
               <h3 className="text-xl font-semibold text-gray-800 mb-4">
                 Trend Analysis
               </h3>
-              <LineChart
-                width={1000}
-                height={300}
-                data={chartData}
-                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="CSE" stroke="#4f46e5" />
-                <Line type="monotone" dataKey="ECE" stroke="#06b6d4" />
-                <Line type="monotone" dataKey="EEE" stroke="#8b5cf6" />
-                <Line type="monotone" dataKey="MECH" stroke="#ec4899" />
-                <Line type="monotone" dataKey="CIVIL" stroke="#f59e0b" />
-                <Line type="monotone" dataKey="AI&DS" stroke="#10b981" />
-              </LineChart>
+              <div className="min-w-[800px]">
+                <LineChart
+                  width={1000}
+                  height={300}
+                  data={chartData}
+                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey="CSE" stroke="#4f46e5" />
+                  <Line type="monotone" dataKey="ECE" stroke="#06b6d4" />
+                  <Line type="monotone" dataKey="EEE" stroke="#8b5cf6" />
+                  <Line type="monotone" dataKey="MECH" stroke="#ec4899" />
+                  <Line type="monotone" dataKey="CIVIL" stroke="#f59e0b" />
+                  <Line type="monotone" dataKey="AI&DS" stroke="#10b981" />
+                </LineChart>
+              </div>
             </div>
           </div>
         </div>

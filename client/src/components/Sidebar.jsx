@@ -33,47 +33,76 @@ const Sidebar = () => {
       type: "link"
     },
     {
-      name: "Analytics",
+      name: "Reports",
       icon: <ReportsIcon className="w-5 h-5" />,
       type: "dropdown",
       subItems: [
-        { name: "Student Analytics", path: "/reports/student" },
-        { name: "Department Analytics", path: "/reports/department" }
+        { 
+          name: "Student Reports", 
+          path: "/reports/student",
+          icon: <GeneralReportIcon className="w-4 h-4" />
+        },
+        { 
+          name: "Department Reports", 
+          path: "/reports/department",
+          icon: <ReportsIcon className="w-4 h-4" />
+        }
       ]
     },
     {
-      name: "General Report",
+      name: "View Records",
       icon: <GeneralReportIcon className="w-5 h-5" />,
       path: "/view-data",
       type: "link"
     },
     {
-      name: "Record Operations",  // Changed from "Data Tools"
+      name: "Data Entry Tools",
       icon: <ImportDataIcon className="w-5 h-5" />,
       type: "dropdown",
       subItems: [
         { 
-          name: "Add Records",  // Changed from "Import Data"
+          name: "Add Records",
+          icon: <ImportDataIcon className="w-4 h-4" />,
           submenu: [
-            { name: "Single Entry", path: "/data-tools/import/individual" },
-            { name: "Bulk Import", path: "/data-tools/import/batch" }
+            { 
+              name: "Single student", 
+              path: "/data-tools/import/individual",
+              icon: <ImportDataIcon className="w-4 h-4" />
+            },
+            { 
+              name: "Batch students", 
+              path: "/data-tools/import/batch",
+              icon: <ImportDataIcon className="w-4 h-4" />
+            }
           ]
         },
-        { name: "Edit Records", path: "/data-tools/edit" },
         { 
-          name: "Remove Records",  // Changed from "Delete Records"
+          name: "Edit Records", 
+          path: "/data-tools/edit",
+          icon: <EditRecordsIcon className="w-4 h-4" />
+        },
+        { 
+          name: "Delete Student",
+          icon: <DeleteRecordsIcon className="w-4 h-4" />,
           submenu: [
-            { name: "Single Removal", path: "/data-tools/delete/individual" },
-            { name: "Bulk Removal", path: "/data-tools/delete/batch" }
+            { 
+              name: "Single Student", 
+              path: "/data-tools/delete/individual",
+              icon: <DeleteRecordsIcon className="w-4 h-4" />
+            },
+            { 
+              name: "Batch Students", 
+              path: "/data-tools/delete/batch",
+              icon: <DeleteRecordsIcon className="w-4 h-4" />
+            }
           ]
         }
       ]
     }
   ];
 
-  // Update the main container and styling
   return (
-    <div className="w-[250px] min-h-screen bg-gradient-to-b from-indigo-900 via-blue-800 to-blue-900 p-5 flex flex-col">
+    <div className="w-[280px] min-h-screen bg-gradient-to-b from-indigo-900 via-blue-800 to-blue-900 p-5 flex flex-col">
       {/* Logo Section */}
       <div className="text-center mb-8">
         <div className="bg-white/10 backdrop-blur-sm p-4 rounded-2xl inline-block shadow-lg">
@@ -109,7 +138,7 @@ const Sidebar = () => {
                   </span>
                 </button>
                 {activeMenu === item.name && (
-                  <div className="ml-10 mt-1 space-y-1 border-l border-blue-400/30 pl-2">
+                  <div className="ml-10 mt-2 space-y-2 border-l-2 border-blue-400/50 pl-4">
                     {item.subItems.map((subItem, subIndex) => (
                       <div key={subIndex} className="relative">
                         {subItem.submenu ? (
@@ -118,20 +147,24 @@ const Sidebar = () => {
                             onMouseLeave={() => setHoveredSubmenu(null)}
                             className="group"
                           >
-                            <button className="w-full text-left py-2 px-3 text-blue-100 hover:text-white flex items-center justify-between rounded transition-colors text-sm group">
-                              <span>{subItem.name}</span>
+                            <button className="w-full text-left py-2.5 px-4 text-blue-100 hover:text-white hover:bg-white/10 flex items-center justify-between rounded-md transition-colors text-sm font-medium group">
+                              <div className="flex items-center">
+                                <span className="mr-3 flex items-center text-blue-200">{subItem.icon}</span>
+                                <span>{subItem.name}</span>
+                              </div>
                               <span className="text-xs text-blue-200 transform transition-transform group-hover:translate-x-1">
                                 {hoveredSubmenu === subItem.name ? '>' : '+'}
                               </span>
                             </button>
                             {hoveredSubmenu === subItem.name && (
-                              <div className="absolute left-full top-0 ml-1 bg-gradient-to-br from-indigo-900 to-blue-900 rounded-lg shadow-xl z-20 w-48 py-1 border border-blue-400/30">
+                              <div className="absolute left-full top-0 ml-2 bg-gradient-to-br from-indigo-900 to-blue-900 rounded-lg shadow-xl z-20 w-56 py-2 border border-blue-400/30">
                                 {subItem.submenu.map((nestedItem, nestedIndex) => (
                                   <Link
                                     key={nestedIndex}
                                     to={nestedItem.path}
-                                    className="block px-4 py-2 text-sm text-blue-100 hover:bg-white/10 hover:text-white"
+                                    className="block px-5 py-2.5 text-sm text-blue-100 hover:bg-white/10 hover:text-white font-medium flex items-center"
                                   >
+                                    <span className="mr-3 flex items-center text-blue-200">{nestedItem.icon}</span>
                                     {nestedItem.name}
                                   </Link>
                                 ))}
@@ -141,8 +174,9 @@ const Sidebar = () => {
                         ) : (
                           <Link
                             to={subItem.path}
-                            className="block py-2 px-3 text-blue-100 hover:text-white rounded transition-colors text-sm"
+                            className="block py-2.5 px-4 text-blue-100 hover:text-white hover:bg-white/10 rounded-md transition-colors text-sm font-medium flex items-center"
                           >
+                            <span className="mr-3 flex items-center text-blue-200">{subItem.icon}</span>
                             {subItem.name}
                           </Link>
                         )}
