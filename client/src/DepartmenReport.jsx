@@ -238,7 +238,7 @@ const DepartmentReport = () => {
                   type="date"
                   value={startDate}
                   onChange={handleStartDateChange}
-                  max={today}
+
                   required
                   className="w-full px-3 py-2 rounded-lg border border-indigo-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
@@ -252,7 +252,7 @@ const DepartmentReport = () => {
                   value={endDate}
                   onChange={handleEndDateChange}
                   min={startDate} // Prevent selecting end date before start date
-                  max={today}
+                  
                   required
                   className="w-full px-3 py-2 rounded-lg border border-indigo-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />

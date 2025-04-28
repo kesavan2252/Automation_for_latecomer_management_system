@@ -9,11 +9,14 @@ const ImportBatch = () => {
   const [file, setFile] = useState(null);
   const [filePreview, setFilePreview] = useState(null);
   const [fileError, setFileError] = useState("");
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [parsedData, setParsedData] = useState(null);
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
     setFile(selectedFile);
     setFileError("");
+    setParsedData(null);
     
     if (selectedFile) {
       if (!selectedFile.name.endsWith('.csv')) {
@@ -24,14 +27,28 @@ const ImportBatch = () => {
       const reader = new FileReader();
       reader.onload = (event) => {
         const text = event.target.result;
-        const lines = text.split('\n').filter(line => line.trim() !== ''); // Filter empty lines
+        const lines = text.split('\n').filter(line => line.trim() !== '');
         if (lines.length > 0) {
-          const headers = lines[0].toLowerCase();
+          const headers = lines[0].toLowerCase().split(',').map(h => h.trim());
           if (!headers.includes('roll_no') || !headers.includes('name') || !headers.includes('department')) {
             setFileError("File must contain roll_no, name, and department columns!");
             return;
           }
-          setFilePreview(lines.slice(0, 6)); // Preview first 5 rows + header
+
+          // Parse CSV data into structured format
+          const data = lines.slice(1).map(line => {
+            const values = line.split(',').map(v => v.trim());
+            return {
+              roll_no: values[headers.indexOf('roll_no')],
+              name: values[headers.indexOf('name')],
+              department: values[headers.indexOf('department')],
+              batch: batch // Add batch information
+            };
+          }).filter(item => item.roll_no && item.name && item.department); // Filter out invalid rows
+
+          setTotalRecords(data.length);
+          setParsedData(data);
+          setFilePreview(lines.slice(0, 6));
         }
       };
       reader.readAsText(selectedFile);
@@ -100,7 +117,7 @@ const ImportBatch = () => {
         animate={{ opacity: 1, y: 0 }}
         className="flex-1 p-6"
       >
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <motion.div 
             initial={{ scale: 0.95 }}
             animate={{ scale: 1 }}
@@ -113,99 +130,120 @@ const ImportBatch = () => {
             >
               Batch Import Students
             </motion.h1>
-            <p className="text-blue-600 text-center mb-8 text-sm">
+            <p className="text-blue-600 text-center mb-4 text-sm">
               Upload multiple student records using CSV file
             </p>
 
-            <div className="grid md:grid-cols-2 gap-8">
-              {/* Form Section */}
-              <div className="space-y-6">
-                <div className="group">
-                  <label className="block text-indigo-700 font-medium mb-2">Select Batch</label>
-                  <select
-                    value={batch}
-                    onChange={(e) => setBatch(e.target.value)}
-                    required
-                    className="w-full p-3 bg-blue-50/50 border border-blue-200 rounded-lg 
-                             text-indigo-900 focus:outline-none focus:ring-2 focus:ring-blue-400 
-                             focus:border-transparent transition-all duration-300
-                             group-hover:bg-blue-50"
-                  >
-                    <option value="">Choose batch year</option>
-                    <option value="2021-2025">2021-2025</option>
-                    <option value="2022-2026">2022-2026</option>
-                    <option value="2023-2027">2023-2027</option>
-                    <option value="2024-2028">2024-2028</option>
-                    <option value="2025-2029">2025-2029</option>
-                  </select>
-                </div>
-
-                <div className="group">
-                  <label className="block text-indigo-700 font-medium mb-2">Upload CSV File</label>
-                  <div className="relative">
-                    <input
-                      type="file"
-                      accept=".csv"
-                      onChange={handleFileChange}
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 gap-6">
+                <div className="space-y-4">
+                  <div className="group">
+                    <label className="block text-indigo-700 font-medium mb-2">Select Batch</label>
+                    <select
+                      value={batch}
+                      onChange={(e) => setBatch(e.target.value)}
                       required
                       className="w-full p-3 bg-blue-50/50 border border-blue-200 rounded-lg 
                                text-indigo-900 focus:outline-none focus:ring-2 focus:ring-blue-400 
-                               file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0
-                               file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700
-                               hover:file:bg-blue-100 transition-all duration-300"
-                    />
+                               focus:border-transparent transition-all duration-300"
+                    >
+                      <option value="">Choose batch year</option>
+                      <option value="2021-2025">2021-2025</option>
+                      <option value="2022-2026">2022-2026</option>
+                      <option value="2023-2027">2023-2027</option>
+                      <option value="2024-2028">2024-2028</option>
+                      <option value="2025-2029">2025-2029</option>
+                    </select>
                   </div>
-                  {fileError && (
-                    <p className="text-red-500 text-sm mt-2">{fileError}</p>
-                  )}
-                  <p className="text-sm text-blue-600 mt-2">
-                    File must contain: <span className="font-semibold">roll_no, name, department</span>
-                  </p>
-                </div>
 
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  type="submit"
-                  onClick={handleSubmit}
-                  className="w-full bg-gradient-to-r from-indigo-600 to-blue-500 hover:from-indigo-700 
-                           hover:to-blue-600 text-white font-medium py-3 rounded-lg transition-all 
-                           duration-300 shadow-md hover:shadow-lg"
-                >
-                  Import Students
-                </motion.button>
+                  <div className="group">
+                    <label className="block text-indigo-700 font-medium mb-2">Upload CSV File</label>
+                    <div className="relative">
+                      <input
+                        type="file"
+                        accept=".csv"
+                        onChange={handleFileChange}
+                        required
+                        className="w-full p-3 bg-blue-50/50 border border-blue-200 rounded-lg 
+                                 text-indigo-900 focus:outline-none focus:ring-2 focus:ring-blue-400 
+                                 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0
+                                 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700
+                                 hover:file:bg-blue-100 transition-all duration-300"
+                      />
+                    </div>
+                    {fileError && (
+                      <p className="text-red-500 text-sm mt-2">{fileError}</p>
+                    )}
+                    <p className="text-sm text-blue-600 mt-2">
+                      File must contain: <span className="font-semibold">roll_no, name, department</span>
+                    </p>
+                  </div>
+                </div>
               </div>
 
               {/* Preview Section */}
-              <div className="bg-gray-50 rounded-lg p-4 border border-blue-100">
-                <h3 className="text-lg font-semibold text-indigo-900 mb-4">File Preview</h3>
-                {filePreview ? (
-                  <div className="space-y-2">
-                    {filePreview.map((line, index) => (
-                      <div 
-                        key={index}
-                        className={`text-sm font-mono p-2 rounded ${
-                          index === 0 
-                            ? 'bg-blue-100 text-blue-800 font-semibold' 
-                            : 'bg-white text-gray-600'
-                        }`}
-                      >
-                        {line}
-                      </div>
-                    ))}
-                    <p className="text-sm text-blue-600 mt-4">
-                      {filePreview.length > 0 && `Showing ${filePreview.length - 1} records preview of total ${
-                        file?.text?.split('\n').filter(line => line.trim() !== '').length - 1 || '?'
-                      } records`}
+              {parsedData && (
+                <div>
+                  <h3 className="text-lg font-semibold text-indigo-900 mb-4">
+                    Preview for Batch: {batch}
+                  </h3>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full bg-white rounded-lg overflow-hidden">
+                      <thead className="bg-indigo-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-indigo-800 uppercase tracking-wider">
+                            Roll No
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-indigo-800 uppercase tracking-wider">
+                            Name
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-indigo-800 uppercase tracking-wider">
+                            Department
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-indigo-800 uppercase tracking-wider">
+                            Batch
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {parsedData.slice(0, 5).map((row, index) => (
+                          <tr key={index} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {row.roll_no}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {row.name}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {row.department}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {batch}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="mt-4 flex justify-between items-center">
+                    <p className="text-sm text-blue-600">
+                      Showing 5 of {totalRecords} records
                     </p>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={handleSubmit}
+                      disabled={!parsedData || !batch}
+                      className={`px-6 py-2 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg
+                                ${(!parsedData || !batch) 
+                                  ? 'bg-gray-400 cursor-not-allowed' 
+                                  : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}
+                    >
+                      Import {totalRecords} Students to Batch {batch}
+                    </motion.button>
                   </div>
-                ) : (
-                  <div className="text-center text-gray-500 py-8">
-                    <p>No file selected</p>
-                    <p className="text-sm">CSV preview will appear here</p>
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </motion.div>
         </div>
