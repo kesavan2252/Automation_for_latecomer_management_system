@@ -358,14 +358,14 @@ export const getDepartmentReport = async (req, res) => {
         a.roll_no,
         s.name,
         a.department,
-        a.entry_time AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata' as entry_time,
-        TO_CHAR(a.entry_time AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM-DD') as date
+        a.date AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata' as entry_time,
+        TO_CHAR(a.date AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM-DD') as date
       FROM attendance a
       LEFT JOIN students s ON a.roll_no = s.roll_no
       WHERE a.department = $1
-      AND a.entry_time >= $2
-      AND a.entry_time <= $3
-      ORDER BY a.entry_time DESC
+      AND a.date >= $2
+      AND a.date <= $3
+      ORDER BY a.date DESC
     `;
 
     const result = await pool.query(query, [department, utcStartDate, utcEndDate]);
@@ -394,7 +394,6 @@ export const getDepartmentReport = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
-
 // Email configuration
 const transporter = nodemailer.createTransport({
     service: "gmail",
