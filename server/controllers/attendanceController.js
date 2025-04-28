@@ -358,10 +358,10 @@ export const getDepartmentReport = async (req, res) => {
         a.roll_no,
         s.name,
         a.department,
-        a.date AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata' as entry_time,
-        TO_CHAR(a.date AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM-DD') as date
+        a.date AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata' as ist_date,
+        a.status
       FROM attendance a
-      LEFT JOIN students s ON a.roll_no = s.roll_no
+      JOIN students s ON a.student_id = s.id
       WHERE a.department = $1
       AND a.date >= $2
       AND a.date <= $3
@@ -370,39 +370,45 @@ export const getDepartmentReport = async (req, res) => {
 
     const result = await pool.query(query, [department, utcStartDate, utcEndDate]);
 
-    // Format the response data
-    const formattedData = result.rows.map(row => ({
-      ...row,
-      entry_time: new Date(row.entry_time).toLocaleString('en-US', {
-        timeZone: 'Asia/Kolkata',
-        hour12: true,
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-      }),
-      date: new Date(row.date).toLocaleDateString('en-US', {
-        timeZone: 'Asia/Kolkata',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-      })
-    }));
+    // No need for additional formatting as the frontend handles it
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error in getDepartmentReport:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};export const getDepartmentReport = async (req, res) => {
+  try {
+    const { startDate, endDate, department } = req.query;
+    
+    // Convert dates to UTC for database query
+    const utcStartDate = new Date(startDate);
+    const utcEndDate = new Date(endDate);
+    utcEndDate.setHours(23, 59, 59, 999);  // Set to end of day
 
-    res.json(formattedData);
+    const query = `
+      SELECT 
+        a.roll_no,
+        s.name,
+        a.department,
+        a.date AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata' as ist_date,
+        a.status
+      FROM attendance a
+      JOIN students s ON a.student_id = s.id
+      WHERE a.department = $1
+      AND a.date >= $2
+      AND a.date <= $3
+      ORDER BY a.date DESC
+    `;
+
+    const result = await pool.query(query, [department, utcStartDate, utcEndDate]);
+
+    // No need for additional formatting as the frontend handles it
+    res.json(result.rows);
   } catch (error) {
     console.error('Error in getDepartmentReport:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
-// Email configuration
-const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASSWORD
-    }
-});
-
 // Department HOD emails
 const departmentEmails = {
     "CSE": "suryakesavan6@gmail.com",
