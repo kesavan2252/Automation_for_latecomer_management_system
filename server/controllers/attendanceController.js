@@ -345,41 +345,55 @@ export const addAttendance = async (req, res) => {
 
 
 export const getDepartmentReport = async (req, res) => {
-    try {
-        const { department, batch, startDate, endDate } = req.query;
+  try {
+    const { startDate, endDate, department } = req.query;
+    
+    // Convert dates to UTC for database query
+    const utcStartDate = new Date(startDate);
+    const utcEndDate = new Date(endDate);
+    utcEndDate.setHours(23, 59, 59, 999);  // Set to end of day
 
-        if (!department || !batch || !startDate || !endDate) {
-            return res.status(400).json({ error: "Missing required parameters" });
-        }
+    const query = `
+      SELECT 
+        a.roll_no,
+        s.name,
+        a.department,
+        a.entry_time AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata' as entry_time,
+        TO_CHAR(a.entry_time AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM-DD') as date
+      FROM attendance a
+      LEFT JOIN students s ON a.roll_no = s.roll_no
+      WHERE a.department = $1
+      AND a.entry_time >= $2
+      AND a.entry_time <= $3
+      ORDER BY a.entry_time DESC
+    `;
 
-        const query = `
-    SELECT 
-        s.roll_no, 
-        s.name, 
-        s.department, 
-        s.batch, 
-        a.date AT TIME ZONE 'Asia/Kolkata' AS ist_date, 
-        a.status
-    FROM attendance a
-    JOIN students s ON a.student_id = s.id
-    WHERE 
-        s.department = $1 
-        AND s.batch = $2 
-        AND a.date BETWEEN $3::DATE AND $4::DATE + INTERVAL '1 day' - INTERVAL '1 second'
-    ORDER BY a.date ASC
-`;
+    const result = await pool.query(query, [department, utcStartDate, utcEndDate]);
 
+    // Format the response data
+    const formattedData = result.rows.map(row => ({
+      ...row,
+      entry_time: new Date(row.entry_time).toLocaleString('en-US', {
+        timeZone: 'Asia/Kolkata',
+        hour12: true,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      }),
+      date: new Date(row.date).toLocaleDateString('en-US', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      })
+    }));
 
-        const values = [department, batch, startDate, endDate];
-
-        const { rows } = await pool.query(query, values);
-        res.json(rows);
-    } catch (error) {
-        console.error("Error fetching department report:", error);
-        res.status(500).json({ error: "Internal server error" });
-    }
+    res.json(formattedData);
+  } catch (error) {
+    console.error('Error in getDepartmentReport:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
 };
-
 
 // Email configuration
 const transporter = nodemailer.createTransport({
