@@ -101,4 +101,4 @@ This project is open-source under the **MIT License**.
 ### 💬 Connect with Me!
 📧 Email: suryakesavan6@gmail.com  
 🔗 LinkedIn: [Kesavan T](https://www.linkedin.com/in/kesavan-surya-a446a725a/)  
-🚀 Portfolio: [Coming Soon!]
+🚀 Portfolio: [click here](https://portfolio-ten-ruddy-88.vercel.app/)
